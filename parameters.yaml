@@ -1,0 +1,19 @@
+MLmodel:
+    - SeisBench.PhaseNet.original
+    
+overlap_ratio: 0.9
+    
+rescaling: 
+    - None
+    
+frequency: 
+    - None
+
+pick:
+    P_threshold: 0.3
+    S_threshold: 0.3
+
+output: pick  # pick or prob or all
+
+
+
