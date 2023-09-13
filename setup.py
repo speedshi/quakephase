@@ -6,6 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'seisbench',
+        'pyyaml',
         # Add any other dependencies here
     ],
 )

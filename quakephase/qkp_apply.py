@@ -75,7 +75,7 @@ def _sbmodel(ML_model, pre_trained, rescaling_rate=None, overlap_ratio=None, bli
         raise ValueError('Input SeisBench model name: {} unrecognized!'.format(ML_model))
 
     # rescaling the model
-    if rescaling_rate is not None:
+    if (rescaling_rate is not None) and (isinstance(rescaling_rate,(int,float))):
         sbmodel.sampling_rate = sbmodel.sampling_rate * rescaling_rate  # reset model sampling rate according to the rescaling rate
 
     # deactivate any default filtering, as the input data stream should already been filtered
@@ -88,6 +88,7 @@ def _sbmodel(ML_model, pre_trained, rescaling_rate=None, overlap_ratio=None, bli
         KK = 5  # every point is covered by KK windows
         sbmodel.default_args['overlap'] = int(sbmodel.in_samples * (1 - 1.0/KK))
     else:
+        assert(isinstance(overlap_ratio,(int,float)))  # should be float or int number
         sbmodel.default_args['overlap'] = int(sbmodel.in_samples * overlap_ratio)
 
     if blinding is not None:
@@ -138,12 +139,12 @@ def qkphase(stream, file_para='parameters.yaml'):
         return prob
     elif paras['output'].lower() == 'pick':
         for kmodel in phasemodels:
-            pick = kmodel.classify(stream=stream, 
-                                   P_threshold=paras['pick']['P_threshold'], 
-                                   S_threshold=paras['pick']['S_threshold'])
+            output = kmodel.classify(stream=stream, 
+                                     P_threshold=paras['pick']['P_threshold'], 
+                                     S_threshold=paras['pick']['S_threshold'])
         ### TO DO:
         ### how to aggregate results from different models
-        return pick
+        return output
     else:
         raise ValueError(f"Unrecognized output type {paras['output']}!")
 

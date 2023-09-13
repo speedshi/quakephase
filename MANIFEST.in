@@ -1,1 +1,3 @@
 include parameters.yaml
+include example_data/*
+
