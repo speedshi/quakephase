@@ -13,7 +13,7 @@ pick:
     P_threshold: 0.3
     S_threshold: 0.3
 
-output: pick  # pick or prob or all
+output: pick  # pick or prob
 
 
 
