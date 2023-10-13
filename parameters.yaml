@@ -1,19 +1,28 @@
 MLmodel:
-    - SeisBench.PhaseNet.original
+    - SeisBench_PhaseNet_original
+    # - SeisBench_PhaseNet_stead
+    - SeisBench_EQT_original
+    # - SeisBench_EQT_stead
     
 overlap_ratio: 0.9
     
 rescaling: 
     - None
+    - 2
+    # - 4
     
 frequency: 
     - None
+    - [2, 40]
+    # - [5, 45]
+
+ensemble: max
 
 pick:
     P_threshold: 0.3
     S_threshold: 0.3
 
-output: pick  # pick or prob
+output: all  # pick or prob
 
 
 
