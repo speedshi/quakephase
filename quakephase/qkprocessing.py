@@ -66,7 +66,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
     prob_starttime = max(prob_starttime)  # the latest starttime
     prob_endtime = min(prob_endtime)  # the earliest endtime
     if sampling_rate is None:
-        prob_sampling_rate = max(prob_sampling_rate)  # the maximum sampling_rate
+        prob_sampling_rate = max(prob_sampling_rate)  # use the maximum sampling_rate
     elif isinstance(sampling_rate, (int,float)):
         prob_sampling_rate = sampling_rate  # use input sampling rate
     else:

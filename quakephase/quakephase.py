@@ -58,7 +58,7 @@ def qkphase(stream, file_para='parameters.yaml'):
     for imodel in paras['MLmodel']:  # loop over each model id
         for irescaling in paras['rescaling']:  # loop over each rescaling_rate
             phasemodels.append(load_MLmodel(model_id=imodel, rescaling_rate=irescaling, 
-                                            overlap_ratio=paras['overlap_ratio'], blinding=(0, 0)))
+                                            overlap_ratio=paras['overlap_ratio'], blinding=None))  # blinding=(0, 0)
     
     # check
     assert(len(phasemodels)==Nmlmd*Nresc)
@@ -89,7 +89,7 @@ def qkphase(stream, file_para='parameters.yaml'):
 
         if len(probs_all) > 1:            
             # aggregate results from different models/predictions
-            prob = prob_ensemble(probs_all=probs_all, method=paras['ensemble'], sampling_rate=None)
+            prob = prob_ensemble(probs_all=probs_all, method=paras['ensemble'], sampling_rate=paras['prob_sampling_rate'])
         else:
             prob = probs_all[0]
 
