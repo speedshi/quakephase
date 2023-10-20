@@ -24,6 +24,16 @@ def _check_input(paras):
 
     if paras['output'].lower() not in ['prob', 'pick', 'all']:
         raise ValueError(f"Unrecognized output type {paras['output']}!")
+    
+    if isinstance(paras['prob_sampling_rate'], str):
+        if paras['prob_sampling_rate'].lower() == "none":
+            paras['prob_sampling_rate'] = None
+        else:
+            raise ValueError(f"Invalid input for prob_sampling_rate {paras['prob_sampling_rate']}!")
+    elif isinstance(paras['prob_sampling_rate'], (int,float)):
+        pass
+    else:
+        raise ValueError(f"Invalid input for prob_sampling_rate {paras['prob_sampling_rate']}!")
 
     return
 

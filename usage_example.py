@@ -4,7 +4,7 @@ from quakephase import quakephase
 from obspy import read
 
 
-stream = read("./example_data/*")
+stream = read("./example_data_2/*")
 stream.plot()
 
 stream.detrend('simple')
