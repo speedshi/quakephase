@@ -5,15 +5,22 @@ from .load_MLmodel import load_MLmodel
 from .qkprocessing import stfilter, prob_ensemble
 import seisbench.util as sbu
 from seisbench.models.base import WaveformModel
+from seisbench.util import Pick as sbPick
+import numpy as np
 
 
 
-def _check_input(paras):
+def load_check_input(file_para):
+
+    # load paramters
+    with open(file_para, 'r') as file:
+        paras = yaml.safe_load(file)
 
     assert(isinstance(paras['MLmodel'], (list,)))
     assert(isinstance(paras['rescaling'], (list,)))
     assert(isinstance(paras['frequency'], (list,)))
 
+    # check 'frequency' setting
     for ifreq in paras['frequency']:
         if isinstance(ifreq, (str,)): 
             assert(ifreq.lower()=='none')
@@ -22,9 +29,21 @@ def _check_input(paras):
         else:
             raise ValueError(f"Invalid input for frequency paramter: {ifreq}!")
 
+    # check 'output' setting
     if paras['output'].lower() not in ['prob', 'pick', 'all']:
         raise ValueError(f"Unrecognized output type {paras['output']}!")
     
+    # check 'pick' setting
+    if 'pick' in paras:
+        for itag in ['P_threshold', 'S_threshold']:
+            if isinstance(paras['pick'][itag],(int,float)):
+                assert(0<=paras['pick'][itag]<=1)
+            elif isinstance(paras['pick'][itag],(str)):
+                assert(paras['pick'][itag].lower()=='max')
+            else:
+                raise ValueError(f"Invalid input for pick_{itag}:{paras['pick'][itag]}!")
+
+    # check 'prob_sampling_rate' setting
     if isinstance(paras['prob_sampling_rate'], str):
         if paras['prob_sampling_rate'].lower() == "none":
             paras['prob_sampling_rate'] = None
@@ -35,7 +54,7 @@ def _check_input(paras):
     else:
         raise ValueError(f"Invalid input for prob_sampling_rate {paras['prob_sampling_rate']}!")
 
-    return
+    return paras
 
 
 def qkphase(stream, file_para='parameters.yaml'):
@@ -48,12 +67,8 @@ def qkphase(stream, file_para='parameters.yaml'):
 
     '''
 
-    # load input parameters
-    with open(file_para, 'r') as file:
-        paras = yaml.safe_load(file)
-
-    # check inputs
-    _check_input(paras=paras)
+    # load and check input parameters
+    paras = load_check_input(file_para=file_para)
 
     Nmlmd = len(paras['MLmodel'])  # total number of used ML models
     Nresc = len(paras['rescaling'])  # total number of rescaling rates
@@ -108,13 +123,8 @@ def qkphase(stream, file_para='parameters.yaml'):
         output['prob'] = prob
 
     if (paras['output'].lower() == 'pick') or (paras['output'].lower() == 'all'):
-        phase_tags = ['P', 'S']
-        picks = sbu.PickList()
-        for itag in phase_tags:
-            picks += WaveformModel.picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
-                                                          threshold=paras['pick'][f"{itag}_threshold"],
-                                                          phase=itag)
-        output['pick'] = sbu.PickList(sorted(picks))
+        # get picks   
+        output['pick'] = _get_picks(prob=prob, paras=paras)
 
         # # check
         # pick_check = phasemodels[0].classify(stream, P_threshold=paras['pick']['P_threshold'],
@@ -130,5 +140,31 @@ def qkphase(stream, file_para='parameters.yaml'):
 
     return output
 
+
+def _get_picks(prob, paras):
+    # get picks from probabilities
+    
+    phase_tags = ['P', 'S']
+    picks = sbu.PickList()
+    for itag in phase_tags:
+        if isinstance(paras['pick'][f"{itag}_threshold"],(float,int)):
+            # use a picking threshold 
+            picks += WaveformModel.picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
+                                                          threshold=paras['pick'][f"{itag}_threshold"],
+                                                          phase=itag)
+        elif (paras['pick'][f"{itag}_threshold"].lower()=='max'):
+            # make a pick anyway, recoginze the maximum probability as the threshold
+            assert(prob.select(channel=f"*_{itag}").count() == 1)  # should be only one trace
+            iprob = prob.select(channel=f"*_{itag}")[0]  # phase probabilities
+            iprob_max = np.abs(iprob.max())  # maximum phase probability, treat it as the picking threshold
+            trace_id = f"{iprob.stats.network}.{iprob.stats.station}.{iprob.stats.location}"  # the trace id
+            ipick_time = iprob.stats.starttime + iprob.times()[iprob.data.argmax()]  # the picking time of this phase
+            ipick = sbPick(trace_id=trace_id, start_time=ipick_time, end_time=ipick_time, 
+                           peak_time=ipick_time, peak_value=iprob_max, phase=itag)  # take the time at the maximum probability as the pick time
+            picks += ipick
+        else:
+            raise ValueError
+
+    return sbu.PickList(sorted(picks))
 
 
