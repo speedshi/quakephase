@@ -161,7 +161,7 @@ def _get_picks(prob, paras):
             ipick_time = iprob.stats.starttime + iprob.times()[iprob.data.argmax()]  # the picking time of this phase
             ipick = sbPick(trace_id=trace_id, start_time=ipick_time, end_time=ipick_time, 
                            peak_time=ipick_time, peak_value=iprob_max, phase=itag)  # take the time at the maximum probability as the pick time
-            picks += ipick
+            picks += [ipick]
         else:
             raise ValueError
 
