@@ -1,8 +1,8 @@
 MLmodel:
-    - SeisBench_PhaseNet_original
-    # - SeisBench_PhaseNet_stead
-    - SeisBench_EQT_original
-    # - SeisBench_EQT_stead
+    - SeisBench,PhaseNet,original
+    # - SeisBench,PhaseNet,stead
+    - SeisBench,EQT,original
+    # - SeisBench,EQT,stead
     
 overlap_ratio: 0.9
     

@@ -6,10 +6,10 @@ import seisbench.models as sbm
 
 def load_MLmodel(model_id, rescaling_rate=None, overlap_ratio=0.5, blinding=None):
     '''
-    NOTE sepration for model_id should be '_'
+    NOTE sepration for model_id should be ','
     '''
 
-    model_idsp = model_id.split('_')
+    model_idsp = model_id.split(',')
 
     if model_idsp[0].lower() == 'seisbench':
         # use seisbench phase engine
