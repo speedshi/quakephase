@@ -40,6 +40,7 @@ def stfilter(stream, fband):
     
     stream.detrend('demean')
     stream.detrend('simple')
+    # stream.detrend('linear')
     stream.filter('bandpass', freqmin=fband[0], freqmax=fband[1], corners=2, zerophase=True)
     #stream.taper(max_percentage=0.01, type='cosine', max_length=0.1)  # to avoid anormaly at boundary
     
