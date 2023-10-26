@@ -143,6 +143,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             assert(xprob[0].data.shape==(Nsamp,))
     elif (method.lower() == "semblance"):
        wdp = 20
+       bup = 2
        for ikey in pdata.keys():
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
@@ -150,11 +151,30 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
             assert(xprob[0].data.shape==(Nsamp,))
             nt, npb = pdata[ikey].shape
-            square_of_sums = np.sum(pdata[ikey], axis=-1)**2
-            sum_of_squares = np.sum(pdata[ikey]**2, axis=-1)
+            weit = bn.nanmax(pdata[ikey], axis=-1)
+            square_of_sums = bn.nansum(pdata[ikey], axis=-1)**2
+            sum_of_squares = bn.nansum(pdata[ikey]**2, axis=-1)
             xprob[0].data[:] = 0
             for jj in range(wdp,nt-wdp-1):
-                xprob[0].data[jj] = square_of_sums[jj-wdp,jj+wdp+1].sum() / sum_of_squares[jj-wdp,jj+wdp+1].sum() / npb  # <._.>
+                xprob[0].data[jj] = square_of_sums[jj-wdp:jj+wdp+1].sum() / sum_of_squares[jj-wdp:jj+wdp+1].sum() / npb  # <._.>
+            xprob[0].data = (xprob[0].data**bup) * weit
+            assert(xprob[0].data.shape==(Nsamp,))
+    elif (method.lower() == "coherence"):
+        # this does not work need to work more on this
+        wdp = 30
+        for ikey in pdata.keys():
+            xprob = prob.select(channel=f"*_{ikey}")
+            assert(xprob.count()==1)  # only one
+            assert(xprob[0].stats.starttime==prob_starttime)
+            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(xprob[0].data.shape==(Nsamp,))
+            nt, npb = pdata[ikey].shape
+            random_noise =  np.random.rand(nt, npb) * 1E-4
+            pdata[ikey] = pdata[ikey] + random_noise
+            xprob[0].data[:] = 0
+            for jj in range(wdp,Nsamp-wdp-1):
+                vals = np.linalg.eigvalsh((pdata[ikey][jj-wdp:jj+wdp+1,:].T).dot(pdata[ikey][jj-wdp:jj+wdp+1,:]))
+                xprob[0].data[jj] = vals.max() / vals.sum()  # <._.>
             assert(xprob[0].data.shape==(Nsamp,))
     else:
         ### TO DO: add more emsemble methods: C1, C2, C3, coherence
