@@ -86,7 +86,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
                 Nsamp = len(iprob[jj].data)  # total number of data samples
     
     prob = Stream()  # empty stream
-    pdata = {}
+    pdata = {}  # probability datasets
     for iprob in probs_all:
         for itr in iprob:
             if (itr.stats.starttime != prob_starttime):
@@ -103,7 +103,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
                 itr_m.stats.channel = f"{munify}_{itag}"  # renew channel name
                 prob.append(itr_m)
             else:
-                pdata[itag] = np.hstack((pdata[itag], itr.data.reshape(-1,1)))
+                pdata[itag] = np.hstack((pdata[itag], itr.data.reshape(-1,1)))  # data shape: n_samples * n_probs
 
     if method.lower() == "max":
         for ikey in pdata.keys():
@@ -141,8 +141,23 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             assert(xprob[0].data.shape==(Nsamp,))
             xprob[0].data = np.nanprod(pdata[ikey], axis=-1)  # <._.>
             assert(xprob[0].data.shape==(Nsamp,))
+    elif (method.lower() == "semblance"):
+       wdp = 20
+       for ikey in pdata.keys():
+            xprob = prob.select(channel=f"*_{ikey}")
+            assert(xprob.count()==1)  # only one
+            assert(xprob[0].stats.starttime==prob_starttime)
+            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(xprob[0].data.shape==(Nsamp,))
+            nt, npb = pdata[ikey].shape
+            square_of_sums = np.sum(pdata[ikey], axis=-1)**2
+            sum_of_squares = np.sum(pdata[ikey]**2, axis=-1)
+            xprob[0].data[:] = 0
+            for jj in range(wdp,nt-wdp-1):
+                xprob[0].data[jj] = square_of_sums[jj-wdp,jj+wdp+1].sum() / sum_of_squares[jj-wdp,jj+wdp+1].sum() / npb  # <._.>
+            assert(xprob[0].data.shape==(Nsamp,))
     else:
-        ### TO DO: add more emsemble methods
+        ### TO DO: add more emsemble methods: C1, C2, C3, coherence
         raise ValueError(f'Invalid input for ensemble method: {method}!')
 
     return prob
