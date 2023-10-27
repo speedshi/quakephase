@@ -3,6 +3,7 @@
 import bottleneck as bn
 from obspy.core import Stream
 import numpy as np
+from sklearn.decomposition import PCA
 
 
 
@@ -133,6 +134,15 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             assert(xprob[0].data.shape==(Nsamp,))
             xprob[0].data = bn.nanmean(pdata[ikey], axis=-1)  # <._.>
             assert(xprob[0].data.shape==(Nsamp,))
+    elif method.lower() == "median":
+        for ikey in pdata.keys():
+            xprob = prob.select(channel=f"*_{ikey}")
+            assert(xprob.count()==1)  # only one
+            assert(xprob[0].stats.starttime==prob_starttime)
+            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(xprob[0].data.shape==(Nsamp,))
+            xprob[0].data = bn.nanmedian(pdata[ikey], axis=-1)  # <._.>
+            assert(xprob[0].data.shape==(Nsamp,))
     elif (method.lower() == "prod") or (method.lower() == "multiply"):
         for ikey in pdata.keys():
             xprob = prob.select(channel=f"*_{ikey}")
@@ -160,25 +170,23 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
                 xprob[0].data[jj] = square_of_sums[jj-wdp:jj+wdp+1].sum() / sum_of_squares[jj-wdp:jj+wdp+1].sum() / npb  # <._.>
             xprob[0].data = (xprob[0].data**bup) * weit
             assert(xprob[0].data.shape==(Nsamp,))
-    elif (method.lower() == "coherence"):
-        # this does not work need to work more on this
-        wdp = 30
+    elif (method.lower() == "pca"):
+        pca = PCA(n_components=1)
         for ikey in pdata.keys():
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
             assert(xprob[0].stats.starttime==prob_starttime)
             assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
             assert(xprob[0].data.shape==(Nsamp,))
-            nt, npb = pdata[ikey].shape
-            random_noise =  np.random.rand(nt, npb) * 1E-4
-            pdata[ikey] = pdata[ikey] + random_noise
-            xprob[0].data[:] = 0
-            for jj in range(wdp,Nsamp-wdp-1):
-                vals = np.linalg.eigvalsh((pdata[ikey][jj-wdp:jj+wdp+1,:].T).dot(pdata[ikey][jj-wdp:jj+wdp+1,:]))
-                xprob[0].data[jj] = vals.max() / vals.sum()  # <._.>
+            pbmin = bn.nanmin(pdata[ikey], axis=None)  # minimal value of original data
+            pbmax = bn.nanmax(pdata[ikey], axis=None)  # maximum value of original data
+            xprob[0].data = pca.fit_transform(pdata[ikey])[:,0]
+            xmin = bn.nanmin(xprob[0].data, axis=None)  # minimal value of transferred data
+            xmax = bn.nanmax(xprob[0].data, axis=None)  # maximal value of transferred data
+            xprob[0].data = pbmin + (xprob[0].data - xmin) * (pbmax - pbmin) / (xmax - xmin)  # scale data back to original range
             assert(xprob[0].data.shape==(Nsamp,))
     else:
-        ### TO DO: add more emsemble methods: C1, C2, C3, coherence
+        ### TO DO: add more emsemble methods: Bayesian, Kalman Filtering, etc
         raise ValueError(f'Invalid input for ensemble method: {method}!')
 
     return prob

@@ -7,6 +7,7 @@ setup(
     install_requires=[
         'seisbench',
         'pyyaml',
+        'scikit-learn',
         # Add any other dependencies here
     ],
 )
