@@ -11,17 +11,20 @@ rescaling:
     - 2
     # - 4
     # - 5
+    # - 0.5
+    # - 4.5
     
 frequency: 
     - None
     - [2, 40]
     # - [5, 45]
 
-ensemble: max
+ensemble: max  # max, pca, semblance, mean, median, prod, ...
 
 pick:
-    P_threshold: 0.3
-    S_threshold: 0.3
+    method: threshold  # threshold, max, peak
+    P_threshold: 0.3  # None or number
+    S_threshold: 0.3  # None or number
 
 output: all  # pick or prob
 

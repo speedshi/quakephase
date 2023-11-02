@@ -7,6 +7,7 @@ import seisbench.util as sbu
 from seisbench.models.base import WaveformModel
 from seisbench.util import Pick as sbPick
 import numpy as np
+from scipy.signal import find_peaks
 
 
 
@@ -16,11 +17,28 @@ def load_check_input(file_para):
     with open(file_para, 'r') as file:
         paras = yaml.safe_load(file)
 
+    # check 'MLmodel' setting
     assert(isinstance(paras['MLmodel'], (list,)))
+
+    # check 'overlap_ratio' setting
+    if isinstance(paras['overlap_ratio'],(int,float)) and (0<=paras['overlap_ratio']<1):
+        pass
+    else:
+        raise ValueError(f"Invalid input for overlap_ratio. Must be a value in range [0, 1)")
+
+    # check 'rescaling' setting
     assert(isinstance(paras['rescaling'], (list,)))
-    assert(isinstance(paras['frequency'], (list,)))
+    for jj in range(len(paras['rescaling'])):
+        if isinstance(paras['rescaling'][jj], (int,float)):
+            if paras['rescaling'][jj] <= 0:
+                raise ValueError(f"rescaling should larger than 0. Current input is {paras['rescaling'][jj]}!")
+        elif isinstance(paras['rescaling'][jj],(str)) and (paras['rescaling'][jj].lower()=='none'):
+            paras['rescaling'] = None
+        else:
+            raise ValueError(f"Invalid input for rescaling: {paras['rescaling'][jj]}!")
 
     # check 'frequency' setting
+    assert(isinstance(paras['frequency'], (list,)))
     for ifreq in paras['frequency']:
         if isinstance(ifreq, (str,)): 
             assert(ifreq.lower()=='none')
@@ -35,13 +53,17 @@ def load_check_input(file_para):
     
     # check 'pick' setting
     if 'pick' in paras:
-        for itag in ['P_threshold', 'S_threshold']:
-            if isinstance(paras['pick'][itag],(int,float)):
-                assert(0<=paras['pick'][itag]<=1)
-            elif isinstance(paras['pick'][itag],(str)):
-                assert(paras['pick'][itag].lower()=='max')
-            else:
-                raise ValueError(f"Invalid input for pick_{itag}:{paras['pick'][itag]}!")
+        if paras['pick']['method'].lower() not in ['threshold', 'peak', 'max']:
+            raise ValueError(f"Unrecognized pick method {paras['pick']['method']}!")
+
+        if paras['pick']['method'].lower() in ['threshold', 'peak']:
+            for itag in ['P_threshold', 'S_threshold']:
+                if isinstance(paras['pick'][itag],(int,float)):
+                    assert(0<=paras['pick'][itag]<=1)
+                elif (isinstance(paras['pick'][itag],str)) and (paras['pick'][itag].lower()=='none'):
+                    paras['pick'][itag] = None
+                else:
+                    raise ValueError(f"Invalid input for pick_{itag}:{paras['pick'][itag]}!")
 
     # check 'prob_sampling_rate' setting
     if isinstance(paras['prob_sampling_rate'], str):
@@ -147,12 +169,12 @@ def _get_picks(prob, paras):
     phase_tags = ['P', 'S']
     picks = sbu.PickList()
     for itag in phase_tags:
-        if isinstance(paras['pick'][f"{itag}_threshold"],(float,int)):
+        if (paras['pick']['method'].lower()=='threshold'):
             # use a picking threshold 
             picks += WaveformModel.picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
                                                           threshold=paras['pick'][f"{itag}_threshold"],
                                                           phase=itag)
-        elif (paras['pick'][f"{itag}_threshold"].lower()=='max'):
+        elif (paras['pick']['method'].lower()=='max'):
             # make a pick anyway, recoginze the maximum probability as the threshold
             assert(prob.select(channel=f"*_{itag}").count() == 1)  # should be only one trace
             iprob = prob.select(channel=f"*_{itag}")[0]  # phase probabilities
@@ -162,6 +184,14 @@ def _get_picks(prob, paras):
             ipick = sbPick(trace_id=trace_id, start_time=ipick_time, end_time=ipick_time, 
                            peak_time=ipick_time, peak_value=iprob_max, phase=itag)  # take the time at the maximum probability as the pick time
             picks += [ipick]
+        elif (paras['pick']['method'].lower()=='peak'):
+            # using find_peaks to pick
+            assert(prob.select(channel=f"*_{itag}").count() == 1)  # should be only one trace
+            iprob = prob.select(channel=f"*_{itag}")[0]  # phase probabilities
+            # TO DO ......
+            find_peaks(x=iprob.data, height=None, threshold=None, distance=None, prominence=None, 
+                       width=None, wlen=None, rel_height=0.5, plateau_size=None) 
+            
         else:
             raise ValueError
 
