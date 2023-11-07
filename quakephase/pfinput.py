@@ -30,7 +30,7 @@ def load_check_input(file_para):
             if paras['rescaling'][jj] <= 0:
                 raise ValueError(f"rescaling should larger than 0. Current input is {paras['rescaling'][jj]}!")
         elif isinstance(paras['rescaling'][jj],(str)) and (paras['rescaling'][jj].lower()=='none'):
-            paras['rescaling'] = None
+            paras['rescaling'][jj] = None
         else:
             raise ValueError(f"Invalid input for rescaling: {paras['rescaling'][jj]}!")
 
