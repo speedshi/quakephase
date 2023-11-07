@@ -1,8 +1,8 @@
 
 
-import yaml
 from .load_MLmodel import load_MLmodel
 from .qkprocessing import stfilter, prob_ensemble
+from .pfinput import load_check_input
 import seisbench.util as sbu
 from seisbench.models.base import WaveformModel
 from seisbench.util import Pick as sbPick
@@ -11,75 +11,7 @@ from scipy.signal import find_peaks
 
 
 
-def load_check_input(file_para):
-
-    # load paramters
-    with open(file_para, 'r') as file:
-        paras = yaml.safe_load(file)
-
-    # check 'MLmodel' setting
-    assert(isinstance(paras['MLmodel'], (list,)))
-
-    # check 'overlap_ratio' setting
-    if isinstance(paras['overlap_ratio'],(int,float)) and (0<=paras['overlap_ratio']<1):
-        pass
-    else:
-        raise ValueError(f"Invalid input for overlap_ratio. Must be a value in range [0, 1)")
-
-    # check 'rescaling' setting
-    assert(isinstance(paras['rescaling'], (list,)))
-    for jj in range(len(paras['rescaling'])):
-        if isinstance(paras['rescaling'][jj], (int,float)):
-            if paras['rescaling'][jj] <= 0:
-                raise ValueError(f"rescaling should larger than 0. Current input is {paras['rescaling'][jj]}!")
-        elif isinstance(paras['rescaling'][jj],(str)) and (paras['rescaling'][jj].lower()=='none'):
-            paras['rescaling'] = None
-        else:
-            raise ValueError(f"Invalid input for rescaling: {paras['rescaling'][jj]}!")
-
-    # check 'frequency' setting
-    assert(isinstance(paras['frequency'], (list,)))
-    for ifreq in paras['frequency']:
-        if isinstance(ifreq, (str,)): 
-            assert(ifreq.lower()=='none')
-        elif isinstance(ifreq, (list,)):
-            assert(len(ifreq)==2)
-        else:
-            raise ValueError(f"Invalid input for frequency paramter: {ifreq}!")
-
-    # check 'output' setting
-    if paras['output'].lower() not in ['prob', 'pick', 'all']:
-        raise ValueError(f"Unrecognized output type {paras['output']}!")
-    
-    # check 'pick' setting
-    if 'pick' in paras:
-        if paras['pick']['method'].lower() not in ['threshold', 'peak', 'max']:
-            raise ValueError(f"Unrecognized pick method {paras['pick']['method']}!")
-
-        if paras['pick']['method'].lower() in ['threshold', 'peak']:
-            for itag in ['P_threshold', 'S_threshold']:
-                if isinstance(paras['pick'][itag],(int,float)):
-                    assert(0<=paras['pick'][itag]<=1)
-                elif (isinstance(paras['pick'][itag],str)) and (paras['pick'][itag].lower()=='none'):
-                    paras['pick'][itag] = None
-                else:
-                    raise ValueError(f"Invalid input for pick_{itag}:{paras['pick'][itag]}!")
-
-    # check 'prob_sampling_rate' setting
-    if isinstance(paras['prob_sampling_rate'], str):
-        if paras['prob_sampling_rate'].lower() == "none":
-            paras['prob_sampling_rate'] = None
-        else:
-            raise ValueError(f"Invalid input for prob_sampling_rate {paras['prob_sampling_rate']}!")
-    elif isinstance(paras['prob_sampling_rate'], (int,float)):
-        pass
-    else:
-        raise ValueError(f"Invalid input for prob_sampling_rate {paras['prob_sampling_rate']}!")
-
-    return paras
-
-
-def qkphase(stream, file_para='parameters.yaml'):
+def apply(stream, file_para='parameters.yaml'):
     '''
     INPUT:
         stream: three-component obspy stream object;
@@ -188,9 +120,17 @@ def _get_picks(prob, paras):
             # using find_peaks to pick
             assert(prob.select(channel=f"*_{itag}").count() == 1)  # should be only one trace
             iprob = prob.select(channel=f"*_{itag}")[0]  # phase probabilities
+            peaks_indx, _ = find_peaks(x=iprob.data, 
+                                       height=paras['pick'][f"{itag}_threshold"], # the required height of peaks
+                                       threshold=paras['pick']['nb_threshold'], # the vertical distance to its direct neighboring samples
+                                       distance=paras['pick']['distance'], # the required minimal horizontal distance (>= 1) in samples between neighbouring peaks
+                                       prominence=paras['pick']['prominence'],
+                                       width=paras['pick']['width'], 
+                                       wlen=paras['pick']['wlen'],
+                                       rel_height=paras['pick']['rel_height'], 
+                                       plateau_size=paras['pick']['plateau_size'])
+            
             # TO DO ......
-            find_peaks(x=iprob.data, height=None, threshold=None, distance=None, prominence=None, 
-                       width=None, wlen=None, rel_height=0.5, plateau_size=None) 
             
         else:
             raise ValueError
