@@ -82,7 +82,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
         for jj, jjtr in enumerate(iprob):
             tr_temp = jjtr.copy()
             tr_temp.trim(starttime=prob_starttime, endtime=prob_endtime, pad=True,
-                         nearest_sample=True, fill_value=None)
+                         nearest_sample=False, fill_value=None)
             if (tr_temp.stats.starttime == prob_starttime):
                 iprob[jj] = tr_temp.copy()
                 Nsamp = len(iprob[jj].data)  # total number of data samples
@@ -95,7 +95,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
                 itr.interpolate(sampling_rate=prob_sampling_rate,
                                 method="weighted_average_slopes",
                                 starttime=prob_starttime, npts=Nsamp)
-            assert(itr.stats.sampling_rate==prob_sampling_rate)
+            assert(abs(itr.stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(itr.stats.starttime==prob_starttime)
             assert(itr.data.shape==(Nsamp,))
             itag = itr.stats.channel.split('_')[-1]  # phase or classify tage
