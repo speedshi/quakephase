@@ -112,7 +112,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
             assert(xprob[0].stats.starttime==prob_starttime)
-            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(abs(xprob[0].stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(xprob[0].data.shape==(Nsamp,))
             xprob[0].data = bn.nanmax(pdata[ikey], axis=-1)  # <._.>
             assert(xprob[0].data.shape==(Nsamp,))
@@ -121,7 +121,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
             assert(xprob[0].stats.starttime==prob_starttime)
-            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(abs(xprob[0].stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(xprob[0].data.shape==(Nsamp,))
             xprob[0].data = bn.nanmin(pdata[ikey], axis=-1)  # <._.>
             assert(xprob[0].data.shape==(Nsamp,))
@@ -130,7 +130,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
             assert(xprob[0].stats.starttime==prob_starttime)
-            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(abs(xprob[0].stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(xprob[0].data.shape==(Nsamp,))
             xprob[0].data = bn.nanmean(pdata[ikey], axis=-1)  # <._.>
             assert(xprob[0].data.shape==(Nsamp,))
@@ -139,7 +139,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
             assert(xprob[0].stats.starttime==prob_starttime)
-            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(abs(xprob[0].stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(xprob[0].data.shape==(Nsamp,))
             xprob[0].data = bn.nanmedian(pdata[ikey], axis=-1)  # <._.>
             assert(xprob[0].data.shape==(Nsamp,))
@@ -148,7 +148,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
             assert(xprob[0].stats.starttime==prob_starttime)
-            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(abs(xprob[0].stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(xprob[0].data.shape==(Nsamp,))
             xprob[0].data = np.nanprod(pdata[ikey], axis=-1)  # <._.>
             assert(xprob[0].data.shape==(Nsamp,))
@@ -159,7 +159,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
             assert(xprob[0].stats.starttime==prob_starttime)
-            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(abs(xprob[0].stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(xprob[0].data.shape==(Nsamp,))
             nt, npb = pdata[ikey].shape
             weit = bn.nanmax(pdata[ikey], axis=-1)
@@ -176,7 +176,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             xprob = prob.select(channel=f"*_{ikey}")
             assert(xprob.count()==1)  # only one
             assert(xprob[0].stats.starttime==prob_starttime)
-            assert(xprob[0].stats.sampling_rate==prob_sampling_rate)
+            assert(abs(xprob[0].stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(xprob[0].data.shape==(Nsamp,))
             pbmin = bn.nanmin(pdata[ikey], axis=None)  # minimal value of original data
             pbmax = bn.nanmax(pdata[ikey], axis=None)  # maximum value of original data
