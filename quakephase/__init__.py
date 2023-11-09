@@ -4,7 +4,8 @@ __all__ = [
     'quakephase',
     'load_MLmodel',
     'qkprocessing',
-    'pfinput'
+    'pfinput',
+    'xpick',
     ]
 
 
