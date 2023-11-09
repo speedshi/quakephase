@@ -43,6 +43,7 @@ def get_picks(prob, paras):
                                        wlen=paras['pick']['wlen'],
                                        rel_height=paras['pick']['rel_height'], 
                                        plateau_size=paras['pick']['plateau_size'])
+            peaks_indx.sort()
             trace_id = f"{iprob.stats.network}.{iprob.stats.station}.{iprob.stats.location}"
             kflag = 0  # array index
             Nsamp = np.size(iprob.data)  # total number of sample in probability curve
