@@ -108,3 +108,43 @@ def get_picks(prob, paras):
 
 
 
+def picks_clean(picks, phase_min_time):
+    '''
+    picks: list of SeisBench Pick objects;
+    phase_min_time: float in second, only one pick can exist within this time range;
+    '''
+
+    picks = sbu.PickList(sorted(picks))  # picks must be ordered according to picking time
+
+    picks_c = sbu.PickList()  # cleaned list
+    Npk = len(picks)
+    exclude_pkidx_list = []  # picks to exclude
+    for ii, ipick  in enumerate(picks):
+        if ii in exclude_pkidx_list: continue
+        add_this_pick = True
+        for jj in range(ii+1, Npk):
+            # check all the remaniing picks
+            pktime_diff = abs(picks[jj].peak_time - ipick.peak_time)  # absolute picking differential time in second
+            if pktime_diff <= phase_min_time:
+                # within the preset limit
+                # will keep the one with a larger picking probability
+                if ipick.peak_value < picks[jj].peak_value:
+                    # ipick has a smaller picking probability
+                    # discard ipick 
+                    add_this_pick = False
+                    break
+                else:
+                    # ipick have a larger picking probability
+                    # the tested picks[jj] will be discard
+                    # continoue checking
+                    exclude_pkidx_list.append(jj)
+            else:
+                # already outside the limit, since picks list are oderded, no need to checking the following
+                break
+
+        if add_this_pick: picks_c += [ipick]  # add the current ipick if it pass the criterion
+
+    return sbu.PickList(sorted(picks_c))
+
+
+
