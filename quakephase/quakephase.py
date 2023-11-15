@@ -41,7 +41,7 @@ def apply(data, file_para='parameters.yaml'):
     assert(len(phasemodels)==Nmlmd*Nresc)
 
     # load seismic data
-    if isinstance(data, (obspy.Stream)):
+    if isinstance(data, (obspy.Stream, obspy.Trace)):
         stream = data
     elif isinstance(data, (str)):
         stream = obspy.read(data)
@@ -50,6 +50,8 @@ def apply(data, file_para='parameters.yaml'):
         for idata in data:
             assert(isinstance(idata, (str)))
             stream += obspy.read(idata)
+    else:
+        raise ValueError(f"Unknown data type: {type(data)}")    
 
     # apply model to data streams, loop over each station
     station_list = []
