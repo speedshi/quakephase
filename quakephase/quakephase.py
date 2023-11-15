@@ -41,8 +41,11 @@ def apply(data, file_para='parameters.yaml'):
     assert(len(phasemodels)==Nmlmd*Nresc)
 
     # load seismic data
-    if isinstance(data, (obspy.Stream, obspy.Trace)):
+    if isinstance(data, (obspy.Stream)):
         stream = data
+    elif isinstance(data, (obspy.Trace)):
+        stream = obspy.Stream()
+        stream.append(data)
     elif isinstance(data, (str)):
         stream = obspy.read(data)
     elif isinstance(data, (list)):
