@@ -60,10 +60,8 @@ def apply(data, file_para='parameters.yaml'):
     output = {}
     if (paras['output'].lower() == 'prob') or (paras['output'].lower() == 'all'):
         output['prob'] = obspy.Stream()
-    elif (paras['output'].lower() == 'pick') or (paras['output'].lower() == 'all'):
+    if (paras['output'].lower() == 'pick') or (paras['output'].lower() == 'all'):
         output['pick'] = []
-    else:
-        raise ValueError(f"Unrecognized output type {paras['output']}!")
 
     for istation in station_list:
         istream = stream.select(station=istation).copy()  # data for a single station
@@ -75,10 +73,8 @@ def apply(data, file_para='parameters.yaml'):
         # append results to output
         if (paras['output'].lower() == 'prob') or (paras['output'].lower() == 'all'):
             output['prob'] += ioutput['prob']
-        elif (paras['output'].lower() == 'pick') or (paras['output'].lower() == 'all'):
+        if (paras['output'].lower() == 'pick') or (paras['output'].lower() == 'all'):
             output['pick'] += ioutput['pick']
-        else:
-            raise ValueError(f"Unrecognized output type {paras['output']}!")
         
         # delete istream to save memory
         del istream
