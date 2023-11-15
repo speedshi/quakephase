@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 def sbresample(stream, sampling_rate):
     """
     Perform inplace resampling of stream to a given sampling rate.
+    The same as used in SeisBench.
 
     :param stream: Input stream
     :type stream: obspy.core.Stream
@@ -190,5 +191,64 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
         raise ValueError(f'Invalid input for ensemble method: {method}!')
 
     return prob
+
+
+
+def check_compile_stream(istream):
+
+    accept_comps = ['Z', 'N', 'E', '1', '2', '3']
+
+    # check and make istream 3-components
+    istream.merge(method=1, fill_value=0)  # merge data with the same channel
+    comps = [itr.stats.channel[-1].upper() for itr in istream]  # avaliable components in the input data
+
+    while (not set(comps).issubset(set(accept_comps))):
+        # rename the components that are not in accept_comps
+        for kk in range(istream.count()):
+            if istream[kk].stats.channel[-1].upper() not in accept_comps:
+                if 'Z' not in comps:
+                    istream[kk].stats.channel = istream[kk].stats.channel[:-1]+'Z'
+                    comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
+                elif ('1' in comps) or ('2' in comps) or ('3' in comps):
+                    for icp in ['1', '2', '3']:
+                        if icp not in comps:
+                            istream[kk].stats.channel = istream[kk].stats.channel[:-1]+icp
+                            comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
+                            break
+                else:
+                    for icp in ['N', 'E']:
+                        if icp not in comps:
+                            istream[kk].stats.channel = istream[kk].stats.channel[:-1]+icp
+                            comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
+                            break
+
+    while (istream.count()<3):
+        # append a new trace to make 3-components
+        if ('Z' not in comps):
+            itrace = istream[0].copy()
+            itrace.stats.channel = istream[0].stats.channel[:-1]+'Z'  # append a 'Z' trace
+            itrace.data[:] = 0
+            istream.append(itrace.copy())
+            comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
+        elif ('1' in comps) or ('2' in comps) or ('3' in comps):
+            for icp in ['1', '2', '3']:
+                if icp not in comps:
+                    itrace = istream[0].copy()
+                    itrace.stats.channel = istream[0].stats.channel[:-1]+icp
+                    itrace.data[:] = 0
+                    istream.append(itrace.copy())
+                    comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
+                    break
+        else:
+            for icp in ['N', 'E']:
+                if icp not in comps:
+                    itrace = istream[0].copy()
+                    itrace.stats.channel = istream[0].stats.channel[:-1]+icp
+                    itrace.data[:] = 0
+                    istream.append(itrace.copy())
+                    comps = [itr.stats.channel[-1].upper() for itr in istream]
+                    break
+
+    return istream
 
 

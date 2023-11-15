@@ -22,6 +22,7 @@ frequency:
 ensemble: max  # max, pca, semblance, mean, median, prod, ...
 
 pick:
+    format: dataframe  # None or dataframe or dict or list
     method: threshold  # threshold, max, peak
     P_threshold: 0.3  # None or number
     S_threshold: 0.3  # None or number

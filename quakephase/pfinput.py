@@ -36,9 +36,10 @@ def load_check_input(file_para):
 
     # check 'frequency' setting
     assert(isinstance(paras['frequency'], (list,)))
-    for ifreq in paras['frequency']:
+    for ii, ifreq in enumerate(paras['frequency']):
         if isinstance(ifreq, (str,)): 
             assert(ifreq.lower()=='none')
+            paras['frequency'] = None
         elif isinstance(ifreq, (list,)):
             assert(len(ifreq)==2)
         else:
@@ -50,6 +51,13 @@ def load_check_input(file_para):
     
     # check 'pick' setting
     if 'pick' in paras:
+        if 'format' not in paras['pick']:
+            paras['pick']['format'] = None
+        elif paras['pick']['format'].lower() == 'none':
+            paras['pick']['format'] = None
+        elif paras['pick']['format'].lower() not in ['dataframe', 'dict', 'list']:
+            raise ValueError(f"Unrecognized pick format {paras['pick']['format']}!")
+
         if paras['pick']['method'].lower() not in ['threshold', 'peak', 'max']:
             raise ValueError(f"Unrecognized pick method {paras['pick']['method']}!")
 
