@@ -88,7 +88,9 @@ def apply(data, file_para='parameters.yaml'):
         output['pick'] = sbu.PickList(sorted(output['pick']))  # sort picks
         
         # format pick output to specified format
-        if paras['pick']['format'].lower() == 'list':
+        if paras['pick']['format'] is None:
+            pass
+        elif paras['pick']['format'].lower() == 'list':
             output['pick'] = [ipick.__dict__ for ipick in output['pick']]  # convert to dict
         elif paras['pick']['format'].lower() == 'dict':
             # convert list of dict to dict of list
