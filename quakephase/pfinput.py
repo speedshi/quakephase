@@ -39,7 +39,7 @@ def load_check_input(file_para):
     for ii, ifreq in enumerate(paras['frequency']):
         if isinstance(ifreq, (str,)): 
             assert(ifreq.lower()=='none')
-            paras['frequency'] = None
+            paras['frequency'][ii] = None
         elif isinstance(ifreq, (list,)):
             assert(len(ifreq)==2)
         else:
