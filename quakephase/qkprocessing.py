@@ -190,18 +190,28 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
         ### TO DO: add more emsemble methods: Bayesian, Kalman Filtering, etc
         raise ValueError(f'Invalid input for ensemble method: {method}!')
 
+    # recompile noise probability: Noise_prob = 1 - P_prob - S_prob
+    if 'N' in pdata:
+        Nprob = prob.select(channel='*_N')
+        assert(Nprob.count()==1)  # only one
+        Pprob = prob.select(channel='*_P')
+        assert(Pprob.count()==1)  # only one
+        Sprob = prob.select(channel='*_S')
+        assert(Sprob.count()==1)  # only one
+        Nprob[0].data = 1 - (Pprob[0].data + Sprob[0].data)
+
     return prob
 
 
 
 def check_compile_stream(istream):
 
-    accept_comps = ['Z', 'N', 'E', '1', '2', '3']
-
-    # check and make istream 3-components
+    # check and compile istream when necessary
     istream.merge(method=1, fill_value=0)  # merge data with the same channel
     comps = [itr.stats.channel[-1].upper() for itr in istream]  # avaliable components in the input data
 
+    # require certain components
+    accept_comps = ['Z', 'N', 'E', '1', '2', '3']
     while (not set(comps).issubset(set(accept_comps))):
         # rename the components that are not in accept_comps
         for kk in range(istream.count()):
@@ -222,6 +232,7 @@ def check_compile_stream(istream):
                             comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
                             break
 
+    # require 3-components inputs
     while (istream.count()<3):
         # append a new trace to make 3-components
         if ('Z' not in comps):
