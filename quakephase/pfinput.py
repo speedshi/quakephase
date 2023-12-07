@@ -199,12 +199,25 @@ def load_check_input(file_para):
         raise ValueError(f"Invalid input for prob_sampling_rate {paras['prob_sampling_rate']}!")
 
     # check 'data' setting
-    if 'data' in paras:
-        if 'component_input' in paras['data']:
-            if (len(paras['data']['component_input'])<=3):
-                pass
-            else:
-                raise ValueError(f"Invalid input for data_component_input: {paras['data']['component_input']}! Must lesst than 3 components!")
+    if 'data' not in paras: paras['data'] = {}
+    if 'component_input' in paras['data']:
+        if (len(paras['data']['component_input'])<=3):
+            pass
+        else:
+            raise ValueError(f"Invalid input for data_component_input: {paras['data']['component_input']}! Must lesst than 3 components!")
+
+    if 'auto_expend' in paras['data']:
+        if type(paras['data']['auto_expend']) is str:
+            # automatically expend data if the input data duration is shorter than model required
+            # expend using input samples at the beginning and end of the data
+            pass
+        elif (type(paras['data']['auto_expend']) is bool) and (not paras['data']['auto_expend']):
+            # no auto expend
+            pass
+        else:
+            raise ValueError(f"Invalid input for data_auto_expend: {paras['data']['auto_expend']}!")
+    else:
+        paras['data']['auto_expend'] = False
 
     return paras
 

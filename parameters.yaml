@@ -33,7 +33,7 @@ prob_sampling_rate: None  # None or float/int
 
 data:  # specify the input seismic data information 
     component_input: Z12  # the input data component(s), only required if the input data format is numpy.ndarray
-
+    auto_expend: False  # whether to auto expend the input data if input duration is too short, can be Flase or constant or symmetric (check numpy.pad)
 
 
 

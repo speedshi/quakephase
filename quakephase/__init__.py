@@ -3,12 +3,13 @@
 __all__ = [
     'quakephase',
     'load_MLmodel',
-    'qkprocessing',
+    'xprob',
     'pfinput',
     'xpick',
+    'streamprocess',
     ]
 
 
 from .load_MLmodel import load_MLmodel
-from .qkprocessing import stfilter, prob_ensemble
+from .streamprocess import stfilter
 

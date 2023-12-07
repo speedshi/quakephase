@@ -2,7 +2,7 @@
 
 from .load_MLmodel import load_MLmodel
 from .xprob import prob_ensemble
-from .streamprocess import stfilter, check_compile_stream, array2stream
+from .streamprocess import stfilter, check_compile_stream, array2stream, expend_trace
 from .pfinput import load_check_input
 from .xpick import get_picks
 import obspy
@@ -145,14 +145,40 @@ def apply_per_station(istream, phasemodels, paras):
 
     probs_all = []
     for kmodel in phasemodels:
+        # loop over each model
+        pdtw = kmodel.in_samples / float(kmodel.sampling_rate)  # prediction window length of the model, in seconds
+
         for ifreq in paras['frequency']:
+            # loop over each frequency range
             stream_ft = istream.copy()
+
+            # auto expend data if required
+            if isinstance(paras['data']['auto_expend'], (str,)):
+                # auto expend data to the required length if input is not enough
+                trace_expended = False
+                itrace_starttime_min = stream_ft[0].stats.starttime
+                itrace_endtime_max = stream_ft[0].stats.endtime
+                for jjtr in range(stream_ft.count()):
+                    if stream_ft[jjtr].stats.starttime < itrace_starttime_min:
+                        itrace_starttime_min = stream_ft[jjtr].stats.starttime
+                    if stream_ft[jjtr].stats.endtime > itrace_endtime_max:
+                        itrace_endtime_max = stream_ft[jjtr].stats.endtime
+                    if (stream_ft[jjtr].stats.endtime - stream_ft[jjtr].stats.starttime) < pdtw:
+                        # need to expend data
+                        stream_ft[jjtr] = expend_trace(trace=stream_ft[jjtr], window_in_second=pdtw, method=paras['data']['auto_expend'].lower())
+                        trace_expended = True
+
+            # filter data
             if (isinstance(ifreq, (list))):
-                # filter data in specified frequency range, bandpass filter
-                stfilter(stream_ft, fband=ifreq)                
+                # filter data in specified frequency range
+                stfilter(stream_ft, fband=ifreq)
 
             # obtain phase probability for each model and frequency
-            probs_all.append(kmodel.annotate(stream=stream_ft))
+            kprob = kmodel.annotate(stream=stream_ft)
+            if (isinstance(paras['data']['auto_expend'], (str,))) and (trace_expended):
+                # need to trim probability data to the original length
+                kprob.trim(starttime=itrace_starttime_min, endtime=itrace_endtime_max, nearest_sample=True)
+            probs_all.append(kprob)
             del stream_ft
     
     Nfreq = len(paras['frequency'])  # total number of frequency ranges

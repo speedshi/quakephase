@@ -2,6 +2,8 @@
 
 import obspy
 from obspy import UTCDateTime
+import numpy as np
+import math
 
 
 
@@ -159,5 +161,20 @@ def array2stream(data, paras):
         stream.append(itrace)
 
     return stream
+
+
+def expend_trace(trace, window_in_second, method):
+
+    # expend trace by padding at the begining and end
+    Nsamp = math.ceil(trace.stats.sampling_rate * window_in_second)  # total number of samples required
+    Ninputs = trace.stats.npts  # total number of input samples
+    assert(Nsamp > Ninputs)
+    trace_starttime = trace.stats.starttime
+    npad_half = math.ceil((Nsamp - Ninputs)*0.5)  # the number of samples to be padded at the begining and end
+    trace.data = np.pad(array=trace.data, pad_width=(npad_half,npad_half), mode=method)
+    trace.stats.starttime = trace_starttime - npad_half*trace.stats.delta  # shift the start time to compensate the padding
+    assert((trace.stats.endtime-trace.stats.starttime) >= window_in_second)
+    return trace
+
 
 
