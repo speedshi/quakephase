@@ -173,7 +173,7 @@ def expend_trace(trace, window_in_second, method):
     npad_half = math.ceil((Nsamp - Ninputs)*0.5)  # the number of samples to be padded at the begining and end
     trace.data = np.pad(array=trace.data, pad_width=(npad_half,npad_half), mode=method)
     trace.stats.starttime = trace_starttime - npad_half*trace.stats.delta  # shift the start time to compensate the padding
-    assert((trace.stats.endtime-trace.stats.starttime) >= window_in_second)
+    assert(trace.stats.npts >= Nsamp)
     return trace
 
 
