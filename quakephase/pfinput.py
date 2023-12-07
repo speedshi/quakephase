@@ -207,18 +207,25 @@ def load_check_input(file_para):
             raise ValueError(f"Invalid input for data_component_input: {paras['data']['component_input']}! Must lesst than 3 components!")
 
     if 'auto_expend' in paras['data']:
-        if type(paras['data']['auto_expend']) is str:
-            # automatically expend data if the input data duration is shorter than model required
+        if 'method' not in paras['data']['auto_expend']:
+            raise ValueError(f"Need to specify data_auto_expend_method!")
+        elif type(paras['data']['auto_expend']['method']) is str:
+            # automatically expend data if the input data duration is shorter than required
             # expend using input samples at the beginning and end of the data
             pass
-        elif (type(paras['data']['auto_expend']) is bool) and (not paras['data']['auto_expend']):
-            # no auto expend
+        else:
+            raise ValueError(f"Invalid input for data_auto_expend_method: {paras['data']['auto_expend']['method']}!")
+
+        if 'window_ratio' not in paras['data']['auto_expend']:
+            paras['data']['auto_expend']['window_ratio'] = 1.0
+        elif isinstance(paras['data']['auto_expend']['window_ratio'], (int,float)):
+            # accept float or int
+            # the ratio of the expended window size to the required input duration, 1.0 means the same size
+            # 2.0 means the final expended window is 2 times of the required input duration
             pass
         else:
-            raise ValueError(f"Invalid input for data_auto_expend: {paras['data']['auto_expend']}!")
-    else:
-        paras['data']['auto_expend'] = False
-
+            raise ValueError(f"Invalid input for data_auto_expend_window_ratio: {paras['data']['auto_expend']['window_ratio']}!")
+    
     return paras
 
 

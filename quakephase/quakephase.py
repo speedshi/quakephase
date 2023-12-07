@@ -153,8 +153,9 @@ def apply_per_station(istream, phasemodels, paras):
             stream_ft = istream.copy()
 
             # auto expend data if required
-            if isinstance(paras['data']['auto_expend'], (str,)):
+            if ('auto_expend' in paras['data']):
                 # auto expend data to the required length if input is not enough
+                pdtw_used = pdtw * paras['data']['auto_expend']['window_ratio']
                 trace_expended = False
                 itrace_starttime_min = stream_ft[0].stats.starttime
                 itrace_endtime_max = stream_ft[0].stats.endtime
@@ -163,9 +164,9 @@ def apply_per_station(istream, phasemodels, paras):
                         itrace_starttime_min = stream_ft[jjtr].stats.starttime
                     if stream_ft[jjtr].stats.endtime > itrace_endtime_max:
                         itrace_endtime_max = stream_ft[jjtr].stats.endtime
-                    if (stream_ft[jjtr].stats.endtime - stream_ft[jjtr].stats.starttime) < pdtw:
+                    if (stream_ft[jjtr].stats.endtime - stream_ft[jjtr].stats.starttime) < pdtw_used:
                         # need to expend data
-                        stream_ft[jjtr] = expend_trace(trace=stream_ft[jjtr], window_in_second=pdtw, method=paras['data']['auto_expend'].lower())
+                        stream_ft[jjtr] = expend_trace(trace=stream_ft[jjtr], window_in_second=pdtw_used, method=paras['data']['auto_expend']['method'])
                         trace_expended = True
 
             # filter data
@@ -175,7 +176,7 @@ def apply_per_station(istream, phasemodels, paras):
 
             # obtain phase probability for each model and frequency
             kprob = kmodel.annotate(stream=stream_ft)
-            if (isinstance(paras['data']['auto_expend'], (str,))) and (trace_expended):
+            if ('auto_expend' in paras['data']) and (trace_expended):
                 # need to trim probability data to the original length
                 kprob.trim(starttime=itrace_starttime_min, endtime=itrace_endtime_max, nearest_sample=True)
             probs_all.append(kprob)
