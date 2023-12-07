@@ -4,52 +4,11 @@ import bottleneck as bn
 from obspy.core import Stream
 import numpy as np
 from sklearn.decomposition import PCA
+from .streamprocess import sbresample
 
 
 
-def sbresample(stream, sampling_rate):
-    """
-    Perform inplace resampling of stream to a given sampling rate.
-    The same as used in SeisBench.
-
-    :param stream: Input stream
-    :type stream: obspy.core.Stream
-    :param sampling_rate: Sampling rate (sps) to resample to
-    :type sampling_rate: float
-    """
-    del_list = []
-    for i, trace in enumerate(stream):
-        if trace.stats.sampling_rate == sampling_rate:
-            continue
-        if trace.stats.sampling_rate % sampling_rate == 0:
-            trace.filter("lowpass", freq=sampling_rate * 0.5, zerophase=True)
-            trace.decimate(
-                int(trace.stats.sampling_rate / sampling_rate), no_filter=True
-            )
-        else:
-            trace.resample(sampling_rate, no_filter=True)
-
-    for i in del_list:
-        del stream[i]
-    
-    return
-
-
-def stfilter(stream, fband):
-    # filter seismic stream
-    # operation is performed in place
-    # so no return parameters
-    
-    stream.detrend('demean')
-    stream.detrend('simple')
-    # stream.detrend('linear')
-    stream.filter('bandpass', freqmin=fband[0], freqmax=fband[1], corners=2, zerophase=True)
-    #stream.taper(max_percentage=0.01, type='cosine', max_length=0.1)  # to avoid anormaly at boundary
-    
-    return
-
-
-def prob_ensemble(probs_all, method="max", sampling_rate=None):
+def prob_ensemble(probs_all, method="max", sampling_rate=None, prob_starttime_set=None, prob_endtime_set=None):
     '''
     Aggregate results from different predictions.
     '''
@@ -65,9 +24,17 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
             prob_starttime.append(itr.stats.starttime)
             prob_endtime.append(itr.stats.endtime)
             prob_sampling_rate.append(itr.stats.sampling_rate)
+    
+    if prob_starttime_set is None:
+        prob_starttime = max(prob_starttime)  # the latest starttime
+    else:
+        prob_starttime = prob_starttime_set  # use input starttime
 
-    prob_starttime = max(prob_starttime)  # the latest starttime
-    prob_endtime = min(prob_endtime)  # the earliest endtime
+    if prob_endtime_set is None:
+        prob_endtime = min(prob_endtime)  # the earliest endtime
+    else:
+        prob_endtime = prob_endtime_set  # use input endtime
+
     if sampling_rate is None:
         prob_sampling_rate = max(prob_sampling_rate)  # use the maximum sampling_rate
     elif isinstance(sampling_rate, (int,float)):
@@ -83,7 +50,7 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
         for jj, jjtr in enumerate(iprob):
             tr_temp = jjtr.copy()
             tr_temp.trim(starttime=prob_starttime, endtime=prob_endtime, pad=True,
-                         nearest_sample=False, fill_value=None)
+                         nearest_sample=True, fill_value=None)
             if (tr_temp.stats.starttime == prob_starttime):
                 iprob[jj] = tr_temp.copy()
                 Nsamp = len(iprob[jj].data)  # total number of data samples
@@ -92,10 +59,18 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
     pdata = {}  # probability datasets
     for iprob in probs_all:
         for itr in iprob:
-            if (itr.stats.starttime != prob_starttime):
-                itr.interpolate(sampling_rate=prob_sampling_rate,
-                                method="weighted_average_slopes",
-                                starttime=prob_starttime, npts=Nsamp)
+            if (itr.stats.starttime != prob_starttime) or (itr.data.shape != (Nsamp,)):
+                try:
+                    itr.interpolate(sampling_rate=prob_sampling_rate,
+                                    method="weighted_average_slopes",
+                                    starttime=prob_starttime, npts=Nsamp)
+                except Exception as emsg:
+                    print(f"itr.stats.starttime: {itr.stats.starttime}")
+                    print(f"prob_starttime: {prob_starttime}")
+                    print(f"itr.data.shape: {itr.data.shape}")
+                    print(f"Nsamp: {Nsamp}")
+                    print(f"Error: {emsg}")
+                    raise ValueError("Error in interpolating probability curves!")
             assert(abs(itr.stats.sampling_rate-prob_sampling_rate)<1E-8)
             assert(itr.stats.starttime==prob_starttime)
             assert(itr.data.shape==(Nsamp,))
@@ -203,63 +178,5 @@ def prob_ensemble(probs_all, method="max", sampling_rate=None):
     return prob
 
 
-
-def check_compile_stream(istream):
-
-    # check and compile istream when necessary
-    istream.merge(method=1, fill_value=0)  # merge data with the same channel
-    comps = [itr.stats.channel[-1].upper() for itr in istream]  # avaliable components in the input data
-
-    # require certain components
-    accept_comps = ['Z', 'N', 'E', '1', '2', '3']
-    while (not set(comps).issubset(set(accept_comps))):
-        # rename the components that are not in accept_comps
-        for kk in range(istream.count()):
-            if istream[kk].stats.channel[-1].upper() not in accept_comps:
-                if 'Z' not in comps:
-                    istream[kk].stats.channel = istream[kk].stats.channel[:-1]+'Z'
-                    comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
-                elif ('1' in comps) or ('2' in comps) or ('3' in comps):
-                    for icp in ['1', '2', '3']:
-                        if icp not in comps:
-                            istream[kk].stats.channel = istream[kk].stats.channel[:-1]+icp
-                            comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
-                            break
-                else:
-                    for icp in ['N', 'E']:
-                        if icp not in comps:
-                            istream[kk].stats.channel = istream[kk].stats.channel[:-1]+icp
-                            comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
-                            break
-
-    # require 3-components inputs
-    while (istream.count()<3):
-        # append a new trace to make 3-components
-        if ('Z' not in comps):
-            itrace = istream[0].copy()
-            itrace.stats.channel = istream[0].stats.channel[:-1]+'Z'  # append a 'Z' trace
-            itrace.data[:] = 0
-            istream.append(itrace.copy())
-            comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
-        elif ('1' in comps) or ('2' in comps) or ('3' in comps):
-            for icp in ['1', '2', '3']:
-                if icp not in comps:
-                    itrace = istream[0].copy()
-                    itrace.stats.channel = istream[0].stats.channel[:-1]+icp
-                    itrace.data[:] = 0
-                    istream.append(itrace.copy())
-                    comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
-                    break
-        else:
-            for icp in ['N', 'E']:
-                if icp not in comps:
-                    itrace = istream[0].copy()
-                    itrace.stats.channel = istream[0].stats.channel[:-1]+icp
-                    itrace.data[:] = 0
-                    istream.append(itrace.copy())
-                    comps = [itr.stats.channel[-1].upper() for itr in istream]
-                    break
-
-    return istream
 
 

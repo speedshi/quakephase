@@ -1,12 +1,15 @@
 
 
 from .load_MLmodel import load_MLmodel
-from .qkprocessing import stfilter, prob_ensemble, check_compile_stream
+from .xprob import prob_ensemble
+from .streamprocess import stfilter, check_compile_stream, array2stream
 from .pfinput import load_check_input
 from .xpick import get_picks
 import obspy
 import seisbench.util as sbu
 import pandas as pd
+import numpy as np
+from obspy import UTCDateTime
 
 
 
@@ -36,38 +39,46 @@ def apply(data, file_para='parameters.yaml'):
         for irescaling in paras['rescaling']:  # loop over each rescaling_rate
             phasemodels.append(load_MLmodel(model_id=imodel, rescaling_rate=irescaling, 
                                             overlap_ratio=paras['overlap_ratio'], blinding=None))  # blinding=(0, 0)
-    
-    # check
+
+    # check number of loaded models
     assert(len(phasemodels)==Nmlmd*Nresc)
 
-    # load seismic data
-    if isinstance(data, (obspy.Stream)):
-        stream = data
-    elif isinstance(data, (obspy.Trace)):
-        stream = obspy.Stream()
-        stream.append(data)
-    elif isinstance(data, (str)):
-        stream = obspy.read(data)
-    elif isinstance(data, (list)):
-        stream = obspy.Stream()
-        for idata in data:
-            assert(isinstance(idata, (str)))
-            stream += obspy.read(idata)
-    else:
-        raise ValueError(f"Unknown data type: {type(data)}")    
-
-    # apply model to data streams, loop over each station
-    station_list = []
-    for itr in stream:
-        station_list.append(itr.stats.station)
-    station_list = list(set(station_list))  # remove duplicates
-
+    # format output
     output = {}
     if (paras['output'].lower() == 'prob') or (paras['output'].lower() == 'all'):
         output['prob'] = obspy.Stream()
     if (paras['output'].lower() == 'pick') or (paras['output'].lower() == 'all'):
         output['pick'] = []
 
+    # load seismic data
+    if isinstance(data, (obspy.Stream)):
+        stream = data
+    elif isinstance(data, (obspy.Trace)):
+        stream = obspy.Stream(traces=[data])
+    elif isinstance(data, (str)):
+        stream = obspy.read(data)
+    elif isinstance(data, (list)) and all(isinstance(item, str) for item in data):
+        # input are paths to seismic data files, a list of str
+        stream = obspy.Stream()
+        for idata in data:
+            assert(isinstance(idata, (str)))
+            stream += obspy.read(idata)
+    elif isinstance(data, (np.ndarray)):
+        # input are numpy arrays
+        # convert numpy arrays to obspy stream
+        # data should be a 2D array, with shape (Nsamples, Ntraces)
+        stream = array2stream(data=data, paras=paras['data'])
+        paras['prob_sampling_rate'] = 100  # Hz, reset probability data sampling rate to the default value
+    else:
+        raise ValueError(f"Unknown data type: {type(data)}")    
+
+    # get station list in the stream data
+    station_list = []
+    for itr in stream:
+        station_list.append(itr.stats.station)
+    station_list = list(set(station_list))  # remove duplicates
+
+    # apply model to data streams, loop over each station
     for istation in station_list:
         istream = stream.select(station=istation).copy()  # data for a single station
         istream = check_compile_stream(istream)  # check and compile stream, need 3-component data
@@ -87,6 +98,20 @@ def apply(data, file_para='parameters.yaml'):
     if (paras['output'].lower() == 'pick') or (paras['output'].lower() == 'all'):
         output['pick'] = sbu.PickList(sorted(output['pick']))  # sort picks
         
+        # need to reformate picks if input data format is numpy.ndarray
+        # convert picking results of UCTDateTime to samples
+        # the reference time is always UTCDateTime(0)
+        # default sampling rate is 100 Hz
+        if isinstance(data, (np.ndarray)):
+            for jjpick in output['pick']:
+                # loop over each pick
+                for attr, avalue in vars(jjpick).items():
+                    # loop over each attribute of the pick
+                    if isinstance(avalue, UTCDateTime):
+                        # a picking time related attribute
+                        new_avalue = (avalue - UTCDateTime(0)) * 100 + 1 # convert to samples
+                        setattr(jjpick, attr, new_avalue)
+
         # format pick output to specified format
         if paras['pick']['format'] is None:
             pass

@@ -42,6 +42,13 @@ def load_check_input(file_para):
             paras['frequency'][ii] = None
         elif isinstance(ifreq, (list,)):
             assert(len(ifreq)==2)
+            for jjf in range(len(ifreq)):
+                if isinstance(ifreq[jjf], (int,float)):
+                    pass
+                elif isinstance(ifreq[jjf],(str)) and (ifreq[jjf].lower()=='none'):
+                    paras['frequency'][ii][jjf] = None
+                else:
+                    raise ValueError(f"Invalid input for frequency paramter: {ifreq[jj]}!")
         else:
             raise ValueError(f"Invalid input for frequency paramter: {ifreq}!")
 
@@ -190,6 +197,14 @@ def load_check_input(file_para):
         pass
     else:
         raise ValueError(f"Invalid input for prob_sampling_rate {paras['prob_sampling_rate']}!")
+
+    # check 'data' setting
+    if 'data' in paras:
+        if 'component_input' in paras['data']:
+            if (len(paras['data']['component_input'])<=3):
+                pass
+            else:
+                raise ValueError(f"Invalid input for data_component_input: {paras['data']['component_input']}! Must lesst than 3 components!")
 
     return paras
 

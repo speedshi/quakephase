@@ -15,9 +15,9 @@ rescaling:
     # - 4.5
     
 frequency: 
-    - None
-    - [2, 40]
-    # - [5, 45]
+    - None  # no filtering
+    - [2, 40]  # bandpass filtering
+    # - [5, None]  # highpass filtering
 
 ensemble: max  # max, pca, semblance, mean, median, prod, ...
 
@@ -30,4 +30,10 @@ pick:
 output: all  # pick or prob
 
 prob_sampling_rate: None  # None or float/int
+
+data:  # specify the input seismic data information 
+    component_input: Z12  # the input data component(s), only required if the input data format is numpy.ndarray
+
+
+
 
