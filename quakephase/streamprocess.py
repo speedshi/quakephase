@@ -134,6 +134,14 @@ def array2stream(data, paras):
     nc = len(component_codes)  # number of input components
 
     stream = obspy.Stream()
+    if data.ndim == 1:
+        data = data.reshape((-1, 1))
+    elif data.ndim == 2:
+        pass
+    elif data.ndim == 3:
+        data = data.reshape((data.shape[0], -1))
+    else:
+        raise ValueError(f"Invalid input data shape: {data.shape}! Must be 1D, 2D or 3D.")
     (Nsamples, Ntraces) = data.shape
     if Ntraces%nc != 0:
         raise ValueError(f"Invalid input data shape: {data.shape}! Must be mutiples of input components: {nc}.")
