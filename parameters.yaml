@@ -4,28 +4,30 @@ MLmodel:
     - SeisBench,EQT,original
     # - SeisBench,EQT,stead
     
-overlap_ratio: 0.9
+overlap_ratio: 0.95
     
 rescaling: 
     - None
-    - 2
-    # - 4
-    # - 5
+    - 2 
+    - 3
+    - 4
+    - 5
     # - 0.5
     # - 4.5
     
 frequency: 
     - None  # no filtering
+    - [1, 40]
     - [2, 40]  # bandpass filtering
-    # - [5, None]  # highpass filtering
+    - [5, None]  # highpass filtering
 
-ensemble: max  # max, pca, semblance, mean, median, prod, ...
+ensemble: pca  # max, pca, semblance, mean, median, prod, ...
 
 pick:
     format: dataframe  # None or dataframe or dict or list
     method: threshold  # threshold, max, peak
-    P_threshold: 0.3  # None or number
-    S_threshold: 0.3  # None or number
+    P_threshold: 0.1  # None or number
+    S_threshold: 0.1  # None or number
 
 output: all  # pick or prob
 
@@ -35,6 +37,6 @@ data:  # specify the input seismic data information
     component_input: Z12  # the input data component(s), only required if the input data format is numpy.ndarray
     # auto_expend: 
     #     method: symmetric  # method to auto expend the input data if input duration is too short, can be constant or symmetric ... (check numpy.pad)
-    #     window_ratio: 1.5  # the ratio of the expended window size to the required input duration, 1.0 means the same size
+    #     window_ratio: 2.0  # the ratio of the expended window size to the required input duration, 1.0 means the same size
 
 
