@@ -3,9 +3,51 @@
 
 import numpy as np
 from scipy.signal import find_peaks
-from seisbench.models.base import WaveformModel
+# from seisbench.models.base import WaveformModel
 import seisbench.util as sbu
 from seisbench.util import Pick as sbPick
+from obspy.signal.trigger import trigger_onset
+
+
+
+def picks_from_annotations(annotations, threshold, phase) -> sbu.PickList:
+    """
+    Converts the annotations streams for a single phase to discrete picks using a classical trigger on/off.
+    The lower threshold is set to be the same as the higher threshold. *** Modified by Peidong Shi ***
+    Picks are represented by :py:class:`~seisbench.util.annotations.Pick` objects.
+    The pick start_time and end_time are set to the trigger on and off times.
+
+    :param annotations: Stream of annotations
+    :param threshold: Higher threshold for trigger
+    :param phase: Phase to label, only relevant for output phase labelling
+    :return: List of picks
+    """
+    picks = []
+    for trace in annotations:
+        trace_id = (
+            f"{trace.stats.network}.{trace.stats.station}.{trace.stats.location}"
+        )
+        triggers = trigger_onset(trace.data, threshold, threshold)  # note here I modified: lower threshold = higher threshold
+        times = trace.times()
+        for s0, s1 in triggers:
+            t0 = trace.stats.starttime + times[s0]
+            t1 = trace.stats.starttime + times[s1]
+
+            peak_value = np.max(trace.data[s0 : s1 + 1])
+            s_peak = s0 + np.argmax(trace.data[s0 : s1 + 1])
+            t_peak = trace.stats.starttime + times[s_peak]
+
+            pick = sbu.Pick(
+                trace_id=trace_id,
+                start_time=t0,
+                end_time=t1,
+                peak_time=t_peak,
+                peak_value=peak_value,
+                phase=phase,
+            )
+            picks.append(pick)
+
+    return sbu.PickList(sorted(picks))
 
 
 
@@ -17,9 +59,12 @@ def get_picks(prob, paras):
     for itag in phase_tags:
         if (paras['pick']['method'].lower()=='threshold'):
             # use a picking threshold 
-            picks += WaveformModel.picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
-                                                          threshold=paras['pick'][f"{itag}_threshold"],
-                                                          phase=itag)
+            # picks += WaveformModel.picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
+            #                                               threshold=paras['pick'][f"{itag}_threshold"],
+            #                                               phase=itag)
+            picks += picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
+                                            threshold=paras['pick'][f"{itag}_threshold"],
+                                            phase=itag)
         elif (paras['pick']['method'].lower()=='max'):
             # make a pick anyway, recoginze the maximum probability as the threshold
             assert(prob.select(channel=f"*_{itag}").count() == 1)  # should be only one trace
