@@ -3,9 +3,51 @@
 
 import numpy as np
 from scipy.signal import find_peaks
-from seisbench.models.base import WaveformModel
+# from seisbench.models.base import WaveformModel
 import seisbench.util as sbu
 from seisbench.util import Pick as sbPick
+from obspy.signal.trigger import trigger_onset
+
+
+
+def picks_from_annotations(annotations, threshold, phase) -> sbu.PickList:
+    """
+    Converts the annotations streams for a single phase to discrete picks using a classical trigger on/off.
+    The lower threshold is set to be the same as the higher threshold. *** Modified by Peidong Shi ***
+    Picks are represented by :py:class:`~seisbench.util.annotations.Pick` objects.
+    The pick start_time and end_time are set to the trigger on and off times.
+
+    :param annotations: Stream of annotations
+    :param threshold: Higher threshold for trigger
+    :param phase: Phase to label, only relevant for output phase labelling
+    :return: List of picks
+    """
+    picks = []
+    for trace in annotations:
+        trace_id = (
+            f"{trace.stats.network}.{trace.stats.station}.{trace.stats.location}"
+        )
+        triggers = trigger_onset(trace.data, threshold, threshold)  # note here I modified: lower threshold = higher threshold
+        times = trace.times()
+        for s0, s1 in triggers:
+            t0 = trace.stats.starttime + times[s0]
+            t1 = trace.stats.starttime + times[s1]
+
+            peak_value = np.max(trace.data[s0 : s1 + 1])
+            s_peak = s0 + np.argmax(trace.data[s0 : s1 + 1])
+            t_peak = trace.stats.starttime + times[s_peak]
+
+            pick = sbu.Pick(
+                trace_id=trace_id,
+                start_time=t0,
+                end_time=t1,
+                peak_time=t_peak,
+                peak_value=peak_value,
+                phase=phase,
+            )
+            picks.append(pick)
+
+    return sbu.PickList(sorted(picks))
 
 
 
@@ -17,9 +59,12 @@ def get_picks(prob, paras):
     for itag in phase_tags:
         if (paras['pick']['method'].lower()=='threshold'):
             # use a picking threshold 
-            picks += WaveformModel.picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
-                                                          threshold=paras['pick'][f"{itag}_threshold"],
-                                                          phase=itag)
+            # picks += WaveformModel.picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
+            #                                               threshold=paras['pick'][f"{itag}_threshold"],
+            #                                               phase=itag)
+            picks += picks_from_annotations(annotations=prob.select(channel=f"*_{itag}"),
+                                            threshold=paras['pick'][f"{itag}_threshold"],
+                                            phase=itag)
         elif (paras['pick']['method'].lower()=='max'):
             # make a pick anyway, recoginze the maximum probability as the threshold
             assert(prob.select(channel=f"*_{itag}").count() == 1)  # should be only one trace
@@ -105,6 +150,46 @@ def get_picks(prob, paras):
             raise ValueError(f"Invalid input for pick method: {paras['pick']['method']}!")
 
     return sbu.PickList(sorted(picks))
+
+
+
+def picks_clean(picks, phase_min_time):
+    '''
+    picks: list of SeisBench Pick objects;
+    phase_min_time: float in second, only one pick can exist within this time range;
+    '''
+
+    picks = sbu.PickList(sorted(picks))  # picks must be ordered according to picking time
+
+    picks_c = sbu.PickList()  # cleaned list
+    Npk = len(picks)
+    exclude_pkidx_list = []  # picks to exclude
+    for ii, ipick  in enumerate(picks):
+        if ii in exclude_pkidx_list: continue
+        add_this_pick = True
+        for jj in range(ii+1, Npk):
+            # check all the remaniing picks
+            pktime_diff = abs(picks[jj].peak_time - ipick.peak_time)  # absolute picking differential time in second
+            if pktime_diff <= phase_min_time:
+                # within the preset limit
+                # will keep the one with a larger picking probability
+                if ipick.peak_value < picks[jj].peak_value:
+                    # ipick has a smaller picking probability
+                    # discard ipick 
+                    add_this_pick = False
+                    break
+                else:
+                    # ipick have a larger picking probability
+                    # the tested picks[jj] will be discard
+                    # continoue checking
+                    exclude_pkidx_list.append(jj)
+            else:
+                # already outside the limit, since picks list are oderded, no need to checking the following
+                break
+
+        if add_this_pick: picks_c += [ipick]  # add the current ipick if it pass the criterion
+
+    return sbu.PickList(sorted(picks_c))
 
 
 

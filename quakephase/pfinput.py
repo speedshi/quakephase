@@ -36,11 +36,19 @@ def load_check_input(file_para):
 
     # check 'frequency' setting
     assert(isinstance(paras['frequency'], (list,)))
-    for ifreq in paras['frequency']:
+    for ii, ifreq in enumerate(paras['frequency']):
         if isinstance(ifreq, (str,)): 
             assert(ifreq.lower()=='none')
+            paras['frequency'][ii] = None
         elif isinstance(ifreq, (list,)):
             assert(len(ifreq)==2)
+            for jjf in range(len(ifreq)):
+                if isinstance(ifreq[jjf], (int,float)):
+                    pass
+                elif isinstance(ifreq[jjf],(str)) and (ifreq[jjf].lower()=='none'):
+                    paras['frequency'][ii][jjf] = None
+                else:
+                    raise ValueError(f"Invalid input for frequency paramter: {ifreq[jj]}!")
         else:
             raise ValueError(f"Invalid input for frequency paramter: {ifreq}!")
 
@@ -50,6 +58,13 @@ def load_check_input(file_para):
     
     # check 'pick' setting
     if 'pick' in paras:
+        if 'format' not in paras['pick']:
+            paras['pick']['format'] = None
+        elif paras['pick']['format'].lower() == 'none':
+            paras['pick']['format'] = None
+        elif paras['pick']['format'].lower() not in ['dataframe', 'dict', 'list']:
+            raise ValueError(f"Unrecognized pick format {paras['pick']['format']}!")
+
         if paras['pick']['method'].lower() not in ['threshold', 'peak', 'max']:
             raise ValueError(f"Unrecognized pick method {paras['pick']['method']}!")
 
@@ -183,6 +198,34 @@ def load_check_input(file_para):
     else:
         raise ValueError(f"Invalid input for prob_sampling_rate {paras['prob_sampling_rate']}!")
 
+    # check 'data' setting
+    if 'data' not in paras: paras['data'] = {}
+    if 'component_input' in paras['data']:
+        if (len(paras['data']['component_input'])<=3):
+            pass
+        else:
+            raise ValueError(f"Invalid input for data_component_input: {paras['data']['component_input']}! Must lesst than 3 components!")
+
+    if 'auto_expend' in paras['data']:
+        if 'method' not in paras['data']['auto_expend']:
+            raise ValueError(f"Need to specify data_auto_expend_method!")
+        elif type(paras['data']['auto_expend']['method']) is str:
+            # automatically expend data if the input data duration is shorter than required
+            # expend using input samples at the beginning and end of the data
+            pass
+        else:
+            raise ValueError(f"Invalid input for data_auto_expend_method: {paras['data']['auto_expend']['method']}!")
+
+        if 'window_ratio' not in paras['data']['auto_expend']:
+            paras['data']['auto_expend']['window_ratio'] = 1.0
+        elif isinstance(paras['data']['auto_expend']['window_ratio'], (int,float)):
+            # accept float or int
+            # the ratio of the expended window size to the required input duration, 1.0 means the same size
+            # 2.0 means the final expended window is 2 times of the required input duration
+            pass
+        else:
+            raise ValueError(f"Invalid input for data_auto_expend_window_ratio: {paras['data']['auto_expend']['window_ratio']}!")
+    
     return paras
 
 

@@ -23,6 +23,7 @@ frequency:
 ensemble: pca  # max, pca, semblance, mean, median, prod, ...
 
 pick:
+    format: dataframe  # None or dataframe or dict or list
     method: threshold  # threshold, max, peak
     P_threshold: 0.1  # None or number
     S_threshold: 0.2  # None or number
@@ -30,4 +31,11 @@ pick:
 output: all  # pick or prob
 
 prob_sampling_rate: None  # None or float/int
+
+data:  # specify the input seismic data information 
+    component_input: Z12  # the input data component(s), only required if the input data format is numpy.ndarray
+    # auto_expend: 
+    #     method: symmetric  # method to auto expend the input data if input duration is too short, can be constant or symmetric ... (check numpy.pad)
+    #     window_ratio: 2.0  # the ratio of the expended window size to the required input duration, 1.0 means the same size
+
 
