@@ -1,0 +1,25 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="12">
+            <item index="0" class="java.lang.String" itemvalue="sphinx" />
+            <item index="1" class="java.lang.String" itemvalue="nbsphinx" />
+            <item index="2" class="java.lang.String" itemvalue="sphinx_gallery" />
+            <item index="3" class="java.lang.String" itemvalue="sphinx_rtd_theme" />
+            <item index="4" class="java.lang.String" itemvalue="sphinx_automodapi" />
+            <item index="5" class="java.lang.String" itemvalue="cython" />
+            <item index="6" class="java.lang.String" itemvalue="sphinx_markdown_tables" />
+            <item index="7" class="java.lang.String" itemvalue="sphinx_copybutton" />
+            <item index="8" class="java.lang.String" itemvalue="sphinx_numfig" />
+            <item index="9" class="java.lang.String" itemvalue="numpy" />
+            <item index="10" class="java.lang.String" itemvalue="seisbench" />
+            <item index="11" class="java.lang.String" itemvalue="scikit-learn" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
