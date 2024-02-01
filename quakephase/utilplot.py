@@ -92,13 +92,14 @@ def waveform_pick_1sta(stream, pick, prob=None, pick_threshold=None, time_range=
         else:
             axs[ii].tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False, labeltop=False)
 
-    # plot probabilities
+    # plot probabilities and picks
     if prob is not None:
-        if plot_time_range is not None: 
-            prob.trim(starttime=UTCDateTime(plot_time_range[0]), endtime=UTCDateTime(plot_time_range[1]))
-
         for itag in phase_tage:
-            iprob = prob.select(channel=f"*{itag}")[0]  # probability of a certain phase
+            iprob = prob.select(channel=f"*{itag}")[0].copy()  # probability of a certain phase
+
+            if plot_time_range is not None: 
+                iprob.trim(starttime=UTCDateTime(plot_time_range[0]), endtime=UTCDateTime(plot_time_range[1]))
+
             tt_prob = np.array([(iprob.stats.starttime + dtt).datetime for dtt in iprob.times()])
             axs[nrows-1].plot(tt_prob, iprob.data, linewidth=1.0, color=pick_colors[itag],
                               alpha=0.8, label=f"{iprob.stats.channel}")
