@@ -81,7 +81,7 @@ def apply(data, file_para='parameters.yaml'):
     # apply model to data streams, loop over each station
     for istation in station_list:
         istream = stream.select(station=istation).copy()  # data for a single station
-        istream = check_compile_stream(istream)  # check and compile stream, need 3-component data
+        istream = check_compile_stream(istream)  # check and compile stream
         ioutput = apply_per_station(istream, phasemodels, paras)
 
         # append results to output
