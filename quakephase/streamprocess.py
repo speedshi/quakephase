@@ -84,33 +84,34 @@ def check_compile_stream(istream):
                             comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
                             break
 
-    # require 3-components inputs
-    while (istream.count()<3):
-        # append a new trace to make 3-components
-        if ('Z' not in comps):
-            itrace = istream[0].copy()
-            itrace.stats.channel = istream[0].stats.channel[:-1]+'Z'  # append a 'Z' trace
-            itrace.data[:] = 0
-            istream.append(itrace.copy())
-            comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
-        elif ('1' in comps) or ('2' in comps) or ('3' in comps):
-            for icp in ['1', '2', '3']:
-                if icp not in comps:
-                    itrace = istream[0].copy()
-                    itrace.stats.channel = istream[0].stats.channel[:-1]+icp
-                    itrace.data[:] = 0
-                    istream.append(itrace.copy())
-                    comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
-                    break
-        else:
-            for icp in ['N', 'E']:
-                if icp not in comps:
-                    itrace = istream[0].copy()
-                    itrace.stats.channel = istream[0].stats.channel[:-1]+icp
-                    itrace.data[:] = 0
-                    istream.append(itrace.copy())
-                    comps = [itr.stats.channel[-1].upper() for itr in istream]
-                    break
+    # # require 3-components inputs
+    # while (istream.count()<3):
+    #     # append a new trace to make 3-components
+    #     if ('Z' not in comps):
+    #         itrace = istream[0].copy()
+    #         itrace.stats.channel = istream[0].stats.channel[:-1]+'Z'  # append a 'Z' trace
+    #         itrace.data[:] = 0
+    #         istream.append(itrace.copy())
+    #         comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
+    #     elif ('1' in comps) or ('2' in comps) or ('3' in comps):
+    #         for icp in ['1', '2', '3']:
+    #             if icp not in comps:
+    #                 itrace = istream[0].copy()
+    #                 itrace.stats.channel = istream[0].stats.channel[:-1]+icp
+    #                 itrace.data[:] = 0
+    #                 istream.append(itrace.copy())
+    #                 comps = [itr.stats.channel[-1].upper() for itr in istream]  # renew comps
+    #                 break
+    #     else:
+    #         for icp in ['N', 'E']:
+    #             if icp not in comps:
+    #                 itrace = istream[0].copy()
+    #                 itrace.stats.channel = istream[0].stats.channel[:-1]+icp
+    #                 itrace.data[:] = 0
+    #                 istream.append(itrace.copy())
+    #                 comps = [itr.stats.channel[-1].upper() for itr in istream]
+    #                 break
+    # assert(istream.count()==3)
 
     return istream
 

@@ -82,8 +82,6 @@ def apply(data, file_para='parameters.yaml'):
     for istation in station_list:
         istream = stream.select(station=istation).copy()  # data for a single station
         istream = check_compile_stream(istream)  # check and compile stream, need 3-component data
- 
-        assert(istream.count()==3)
         ioutput = apply_per_station(istream, phasemodels, paras)
 
         # append results to output
@@ -209,7 +207,7 @@ def apply_per_station(istream, phasemodels, paras):
         ioutput['pick'] = get_picks(prob=prob, paras=paras)
 
         # # check
-        # pick_check = phasemodels[0].classify(stream, P_threshold=paras['pick']['P_threshold'],
+        # pick_check = phasemodels[0].classify(istream, P_threshold=paras['pick']['P_threshold'],
         #                                      S_threshold=paras['pick']['S_threshold'])
         # assert(len(ioutput['pick'])==len(pick_check.picks))
         # for hh, hhpick in enumerate(ioutput['pick']):
