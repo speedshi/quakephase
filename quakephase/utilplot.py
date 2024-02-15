@@ -36,7 +36,15 @@ def waveform_pick_1sta(stream, pick, prob=None, pick_threshold=None, time_range=
         elif isinstance(time_range[0], (float, int)):
             pick_all = []
             for ipick in pick:
-                pick_all.append(ipick.peak_time)
+                if isinstance(ipick, (sbu.PickList,)):
+                    ipick_peak_time = ipick.peak_time
+                elif isinstance(ipick, (list,)):
+                    ipick_peak_time = ipick['peak_time']
+                elif isinstance(ipick, (pd.DataFrame,)):
+                    ipick_peak_time = ipick.iloc[ipk]
+                else:
+                    raise ValueError("pick must be a sbu.PickList, list or pd.DataFrame.")
+                pick_all.append(ipick_peak_time)
             pick_min = np.min(pick_all).datetime
             pick_max = np.max(pick_all).datetime    
             plot_time_range = [pick_min + time_range[0], pick_max + time_range[1]]

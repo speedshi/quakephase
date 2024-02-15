@@ -114,13 +114,14 @@ def apply(data, file_para='parameters.yaml'):
         if paras['pick']['format'] is None:
             pass
         elif paras['pick']['format'].lower() == 'list':
+            # output is list of pick_dict
             output['pick'] = [ipick.__dict__ for ipick in output['pick']]  # convert to dict
         elif paras['pick']['format'].lower() == 'dict':
-            # convert list of dict to dict of list
+            # output is dict of pick_list
             output['pick'] = [ipick.__dict__ for ipick in output['pick']]  # convert to dict
             output['pick'] = {k: [d[k] for d in output['pick']] for k in output['pick'][0]}
         elif paras['pick']['format'].lower() == 'dataframe':
-            # convert list of dict to dataframe
+            # output is pick dataframe
             output['pick'] = [ipick.__dict__ for ipick in output['pick']]  # convert to dict
             output['pick'] = pd.DataFrame(output['pick'])
 
