@@ -2,7 +2,7 @@
 
 from .load_MLmodel import load_MLmodel
 from .xprob import prob_ensemble
-from .streamprocess import stfilter, check_compile_stream, array2stream, expend_trace
+from .streamprocess import stfilter, check_compile_stream, array2stream, expend_trace, sbresample
 from .pfinput import load_check_input
 from .xpick import get_picks
 import obspy
@@ -10,7 +10,6 @@ import seisbench.util as sbu
 import pandas as pd
 import numpy as np
 from obspy import UTCDateTime
-from streamprocess import sbresample
 
 
 
