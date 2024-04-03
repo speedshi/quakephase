@@ -10,6 +10,7 @@ import seisbench.util as sbu
 import pandas as pd
 import numpy as np
 from obspy import UTCDateTime
+from streamprocess import sbresample
 
 
 
@@ -186,6 +187,9 @@ def apply_per_station(istream, phasemodels, paras):
 
     if len(probs_all) == 1:
         prob = probs_all[0]
+        if paras['prob_sampling_rate'] is not None:
+            # resample prob to the set frequency sampling_rate
+            sbresample(stream=prob, sampling_rate=paras['prob_sampling_rate'])
     else:
         # remove potential empty prob_streams
         for iprob in probs_all:
@@ -198,6 +202,9 @@ def apply_per_station(istream, phasemodels, paras):
             prob = prob_ensemble(probs_all=probs_all, method=paras['ensemble'], sampling_rate=paras['prob_sampling_rate'])
         else:
             prob = probs_all[0]
+            if paras['prob_sampling_rate'] is not None:
+                # resample prob to the set frequency sampling_rate
+                sbresample(stream=prob, sampling_rate=paras['prob_sampling_rate'])
 
     ioutput = {}
     if (paras['output'].lower() == 'prob') or (paras['output'].lower() == 'all'):
