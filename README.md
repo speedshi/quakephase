@@ -28,6 +28,6 @@ Input parameters are explained and set in the parameter YAML file: "parameters.y
 
 ## Reference 
 Please cite the following paper in your documents if you use **quakephase** in your work:  
-Peidong Shi, Men-Andrin Meier, Linus Villiger, Katinka Tuinstra, Paul Selvadural, Federica Lanza, Sanyi Yuan, Anne Obermann, Maria Mesimeri, Jannes Münchmeyer, Patrick Bianchi, and Stefan Wiemer. From labquakes to megathrusts: Scaling deep learning based pickers over 15 orders of magnitude. In review, 2024.
+Peidong Shi, Men-Andrin Meier, Linus Villiger, Katinka Tuinstra, Paul Selvadural, Federica Lanza, Sanyi Yuan, Anne Obermann, Maria Mesimeri, Jannes Münchmeyer, Patrick Bianchi, and Stefan Wiemer. From labquakes to megathrusts: Scaling deep learning based pickers over 15 orders of magnitude. ESS Open Archive. April 12, 2024. DOI: [10.22541/essoar.171291855.54784565/v1](https://doi.org/10.22541/essoar.171291855.54784565/v1)
 
 
