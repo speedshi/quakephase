@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='quakephase',
-    version='0.2.4',
+    version='0.2.5',
     packages=find_packages(),
     author='Peidong Shi',
     author_email="speedshi@hotmail.com",
