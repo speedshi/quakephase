@@ -5,7 +5,7 @@
 ---
 
 # quakephase
-Machine-learning based tool to characterize seismic phases.  
+Machine-learning based toolbox to characterize seismic phases, i.e. phase detection, phase classification, and phase picking.  
 Currently, the **quakephase** toolbox can be used to largely enhance the pre-trained ML seismic phase picking models.  
 
 
@@ -26,11 +26,12 @@ pip install .
 
 
 ## Usage
-Follow the example script to use **quakephase**:  
+Follow the example scripts to use **quakephase**:  
 **use_quakephase_example.py**  
 **use_quakephase_example.ipynb**  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/speedshi/quakephase/blob/main/use_quakephase_example.ipynb)  
   
-Input parameters are explained and set in the parameter YAML file: "parameters.yaml". Feel free to play with different parameters.  
+Input parameters are explained and set in the parameter YAML file: "parameters.yaml". Feel free to explore and play with different parameters.  
+Note for data with distinct data sampling rates, the rescaling factor affects the performance most, choose it wisely. And if computing power is allowed, you can assemble different sets of rescaling rates to maximize the performance.  
 
 
 ## Reference 
