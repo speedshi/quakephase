@@ -1,5 +1,12 @@
+<p align="center">
+  <img src="https://github.com/speedshi/quakephase/blob/main/docs/figs/QUAKEPHASE_logo.png" />
+</p>
+
+---
+
 # quakephase
-Machine-learning based tool to characterize seismic phases
+Machine-learning based tool to characterize seismic phases.  
+Currently, the **quakephase** toolbox can be used to largely enhance the pre-trained ML seismic phase picking models.  
 
 
 ## Installation
