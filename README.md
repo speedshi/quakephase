@@ -36,6 +36,19 @@ Note for data with distinct data sampling rates, the rescaling factor affects th
 
 ## Reference 
 Please cite the following paper in your documents if you use **quakephase** in your work:  
-Peidong Shi, Men-Andrin Meier, Linus Villiger, Katinka Tuinstra, Paul Selvadural, Federica Lanza, Sanyi Yuan, Anne Obermann, Maria Mesimeri, Jannes Münchmeyer, Patrick Bianchi, and Stefan Wiemer. From labquakes to megathrusts: Scaling deep learning based pickers over 15 orders of magnitude. ESS Open Archive. April 12, 2024. DOI: [10.22541/essoar.171291855.54784565/v1](https://doi.org/10.22541/essoar.171291855.54784565/v1)
+Shi, P., Meier, M.-A., Villiger, L., Tuinstra, K., Selvadurai, P. A., Lanza, F., Yuan, S., Obermann, A., Mesimeri, M., Münchmeyer, J., Bianchi, P., and Wiemer, S. (2024). From labquakes to megathrusts: Scaling deep learning based pickers over 15 orders of magnitude. Journal of Geophysical Research: Machine Learning and Computation, 1(4), e2024JH000220. [https://doi.org/10.1029/2024JH000220](https://doi.org/10.1029/2024JH000220)
 
-
+BibTex:  
+```
+@article{shi2024labquakes,
+  title={{From labquakes to megathrusts: Scaling deep learning based pickers over 15 orders of magnitude}},
+  author={Shi, Peidong and Meier, Men-Andrin and Villiger, Linus and Tuinstra, Katinka and Selvadurai, Paul Antony and Lanza, Federica and Yuan, Sanyi and Obermann, Anne and Mesimeri, Maria and M{\"u}nchmeyer, Jannes and Bianchi, Patrick and Wiemer, Stefan},
+  journal={Journal of Geophysical Research: Machine Learning and Computation},
+  volume={1},
+  number={4},
+  pages={e2024JH000220},
+  year={2024},
+  doi={10.1029/2024JH000220},
+  publisher={Wiley Online Library}
+}
+```
