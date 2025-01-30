@@ -10,6 +10,7 @@ import seisbench.util as sbu
 import pandas as pd
 import numpy as np
 from obspy import UTCDateTime
+from obspy.core.event import Event, Pick, WaveformStreamID, QuantityError
 
 
 
@@ -124,6 +125,27 @@ def apply(data, file_para='parameters.yaml'):
             # output is pick dataframe
             output['pick'] = [ipick.__dict__ for ipick in output['pick']]  # convert to dict
             output['pick'] = pd.DataFrame(output['pick'])
+        elif paras['pick']['format'].lower() == 'obspy':
+            # store all picks in one obspy event object
+            event = Event()  # Create an event object
+            # Add picks to the event object
+            npick = len(output['pick'])
+            for jj in range(npick):
+                ipick = Pick()
+                ipick.time = UTCDateTime(output['pick'][jj].peak_time)
+                ipick.time_errors = QuantityError(lower_uncertainty=float(output['pick'][jj].peak_time - output['pick'][jj].start_time), 
+                                                  upper_uncertainty=float(output['pick'][jj].end_time - output['pick'][jj].peak_time), 
+                                                  confidence_level=output['pick'][jj].peak_value * 100)
+                ipick.phase_hint = output['pick'][jj].phase
+                ipick.waveform_id = WaveformStreamID(network_code=output['pick'][jj].trace_id.split('.')[0],
+                                                     station_code=output['pick'][jj].trace_id.split('.')[1],
+                                                     location_code=output['pick'][jj].trace_id.split('.')[2],
+                                                     channel_code=None)
+                ipick.evaluation_mode = "automatic"
+                event.picks.append(ipick)
+            output['pick'] = event
+        else:
+            raise ValueError(f"Unknown pick format: {paras['pick']['format']}")
 
     return output
 

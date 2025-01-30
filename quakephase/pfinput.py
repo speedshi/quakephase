@@ -62,7 +62,7 @@ def load_check_input(file_para):
             paras['pick']['format'] = None
         elif paras['pick']['format'].lower() == 'none':
             paras['pick']['format'] = None
-        elif paras['pick']['format'].lower() not in ['dataframe', 'dict', 'list']:
+        elif paras['pick']['format'].lower() not in ['dataframe', 'dict', 'list', 'obspy']:
             raise ValueError(f"Unrecognized pick format {paras['pick']['format']}!")
 
         if paras['pick']['method'].lower() not in ['threshold', 'peak', 'max']:
