@@ -3,12 +3,13 @@
 
 from obspy import UTCDateTime
 from datetime import datetime
+import numpy as np
 
 
 def _convert_to_utcdatetime(time_value):
     '''
-    Convert string or datetime to UTCDateTime if 
-    input is a string or datetime. 
+    Convert string or datetime to UTCDateTime 
+    if input is a string or datetime. 
     Otherwise, return the original input.
     '''
     if isinstance(time_value, (str, datetime)):
@@ -16,11 +17,53 @@ def _convert_to_utcdatetime(time_value):
     return time_value
 
 
+def _check_process_input1(source_id=None, receiver_id=None, phase_type=None, prob_range=None):
+    '''
+    Check and format the various input parameters.
+    '''
+    # check and process source_id
+    if (source_id is not None) and (not isinstance(source_id, (str, list, tuple))):
+        raise TypeError("source_id must be a string or a list of strings")
+    if isinstance(source_id, str):
+        source_id = [source_id]
+    source_id = set(source_id)  # Convert to set for faster lookup
+
+    # check and process receiver_id
+    if (receiver_id is not None) and (not isinstance(receiver_id, (str, list, tuple))):
+        raise TypeError("receiver_id must be a string or a list of strings")
+    if isinstance(receiver_id, str):
+        receiver_id = [receiver_id]
+    receiver_id = set(receiver_id)  # Convert to set for faster lookup
+    
+    # check and process phase_type
+    if (phase_type is not None) and (not isinstance(phase_type, (str, list, tuple))):
+        raise TypeError("phase_type must be a string or a list of strings")
+    if isinstance(phase_type, str):
+        phase_type = [phase_type]
+    phase_type = set(phase_type)  # Convert to set for faster lookup
+
+    # check and process prob_range
+    if (prob_range is not None) and (not isinstance(prob_range, (float, int, list, tuple))):
+        raise TypeError("prob_range must be a number or a list of numbers")
+    if isinstance(prob_range, (float, int)):
+        prob_range = [prob_range, np.inf]
+    elif isinstance(prob_range, (list, tuple)):
+        if len(prob_range) == 1:
+            # set the upper bound to infinity
+            prob_range.append(np.inf)
+        elif len(prob_range) == 2:
+            # check if the probability range is valid
+            if prob_range[0] > prob_range[1]:
+                raise ValueError(f"prob_range: {prob_range} is invalid")
+        else:
+            raise ValueError("prob_range must be a number or a list of two numbers")
+        
+    return source_id, receiver_id, phase_type, prob_range
 
 
 class Phase(object):
     '''
-    Phase object for seismic source.
+    Phase object for a paricular seismic phase of a seismic source/event.
     '''
     def __init__(self, phase_type, time, prob=None, uncert_lower=None, uncert_upper=None):
         '''
@@ -74,6 +117,18 @@ class Phase(object):
             if self.time > self.uncert_upper:
                 raise ValueError("phase pick time must be less than or equal to uncert_upper")
 
+    def uncertainty_range(self):
+        '''
+        Get time span between uncertainty bounds in seconds, 
+        or None if not defined
+        '''
+        if (self.uncert_lower is None) or (self.uncert_upper is None):
+            return None
+            
+        if isinstance(self.uncert_lower, UTCDateTime) and isinstance(self.uncert_upper, UTCDateTime):
+            return self.uncert_upper - self.uncert_lower
+        return None
+
     def to_dict(self):
         '''
         Convert the Phase object to a dictionary for serialization.
@@ -88,18 +143,6 @@ class Phase(object):
             'uncert_lower': str(self.uncert_lower) if self.uncert_lower else None,
             'uncert_upper': str(self.uncert_upper) if self.uncert_upper else None
         }
-    
-    def uncertainty_range(self):
-        '''
-        Get time span between uncertainty bounds in seconds, 
-        or None if not defined
-        '''
-        if (self.uncert_lower is None) or (self.uncert_upper is None):
-            return None
-            
-        if isinstance(self.uncert_lower, UTCDateTime) and isinstance(self.uncert_upper, UTCDateTime):
-            return self.uncert_upper - self.uncert_lower
-        return None
 
     @classmethod
     def from_dict(cls, data):
@@ -233,15 +276,15 @@ class SRPhases(object):
             if not isinstance(phases, (list, tuple)):
                 raise TypeError("phases must be a list or tuple of Phase objects")
 
-            phase_types = set()
+            phase_type_all = set()
             for iphase in phases:
                 if not isinstance(iphase, Phase):
                     raise TypeError(f"Expected Phase object, got {type(iphase)}")
                 
-                if iphase.type in phase_types:
+                if iphase.type in phase_type_all:
                     raise ValueError(f"Duplicate phase type '{iphase.type}' found. SRPhases can only contain one phase of each type.")
                 
-                phase_types.add(iphase.type)
+                phase_type_all.add(iphase.type)
                 self.phases[iphase.type] = iphase
 
     def add_phase(self, phase):
@@ -269,31 +312,68 @@ class SRPhases(object):
             self.add_phase(iphase)
         return self  # For method chaining
 
-    def remove_phase(self, phase_type):
+    def remove_phase(self, phase_type=None, min_prob=None, require_both=False):
         '''
-        Remove a phase from the collection by type.
+        Remove phases from the collection based on type and/or minimum probability.
+        Phases of specified types and with probability less than the minimum probability are removed.
         
         Parameters:
-            phase_type: str: Type of phase to remove
-            
-        Returns:
-            Phase: Removed phase object if found, None otherwise
-        '''
-        return self.phases.pop(phase_type, None)
+        phase_type: str or a list/tuple of str or None
+            Type(s) of phases to remove
+        min_prob: float or None
+            Minimum probability threshold. Phases with probability below this are removed.
 
-    def get_phase(self, phase_type=None):
+        Returns:
+            Directly modifies the object, no return value
         '''
-        Get phase, optionally filtered by type.
+        # check and process input parameters
+        _, _, phase_type, _ = _check_process_input1(phase_type=phase_type)
+        if (min_prob is not None) and not isinstance(min_prob, (float, int)):
+            raise TypeError("min_prob must be a number")
+
+        # remove phases directly from self.phases based on set phase_type and min_prob
+        keys_to_delete = []
+        for iphase in self.phases.values():
+            type_match = (phase_type is not None) and (iphase.type in phase_type)
+            prob_match = (min_prob is not None) and (iphase.prob is not None) and (iphase.prob < min_prob)
+            
+            if (require_both and type_match and prob_match) or (not require_both and (type_match or prob_match)):
+                keys_to_delete.append(iphase.type)
         
-        phase_type: str or None: if specified, only return phase of this type
-        returns: dict of all Phase objects if phase_type is None, 
-            otherwise a single Phase object if found, or None if not found
+        for key in keys_to_delete:
+            del self.phases[key]
+        
+        return
+
+    def get_phase(self, phase_type=None, prob_range=None):
         '''
-        if phase_type is None:
-            return self.phases
+        Get phase, optionally filtered by type and probability range.
         
-        # Return the specific phase if it exists, otherwise None
-        return self.phases.get(phase_type)
+        Parameters:
+            phase_type: str or a list/tuple of str or None
+                Type(s) of phases to return
+            prob_range: float or a list/tuple of floats or None
+                Probability range to filter by.
+                If a single float, return phases with probability >= that value.
+                If a list/tuple of two floats, return phases with probability in that range.
+                If None, return all phases.
+
+        Returns:
+            list of Phase objects that match the criteria
+        '''
+        # Short-circuit if no filtering needed
+        if phase_type is None and prob_range is None:
+            return list(self.phases.values())
+
+        # check and process input parameters
+        _, _, phase_type, prob_range = _check_process_input1(phase_type=phase_type, 
+                                                             prob_range=prob_range)  
+
+        # filter phases based on phase_type and prob_range
+        filtered_phases = [iphase for iphase in self.phases.values() if ((phase_type is None) or (iphase.type in phase_type)) and
+                                                                        ((prob_range is None) or ((iphase.prob is not None) and (prob_range[0] <= iphase.prob <= prob_range[1])))
+                          ]
+        return filtered_phases
 
     def update_phase(self, phase, add_if_not_exists=False):
         '''
@@ -424,31 +504,51 @@ class SRPhases(object):
             receiver_id=self.receiver_id
         )
 
-    def filter_phases(self, min_prob=None, phase_types=None):
+    def filter_phases(self, phase_type=None, prob_range=None, inplace=False):
         '''
         Return a new SRPhases object with phases filtered by criteria
-        
-        Parameters:
-            min_prob: float or None - minimum probability threshold
-            phase_types: list of str or None - only include these phase types
-        '''
-        if min_prob is None and phase_types is None:
-            return self.copy()  # Return a simple copy if no filtering needed
 
-        filtered_phases = []
-        
-        for iphase in self.phases.values():
-            if (min_prob is not None) and (iphase.prob is None or iphase.prob < min_prob):
-                continue
-            if (phase_types is not None) and (iphase.type not in phase_types):
-                continue
-            filtered_phases.append(iphase.copy())
-        
-        return SRPhases(
-            phases=filtered_phases,
-            source_id=self.source_id,
-            receiver_id=self.receiver_id
-        )
+        Parameters:
+            phase_type: str or a list/tuple of str or None
+                Only include these phase types
+            prob_range: float or a list/tuple of floats or None
+                Probability range to filter by
+                when a single float, return phases with probability >= that value
+                when a list/tuple of two floats, return phases with probability in that range
+                when None, return all phases
+            inplace: bool, optional
+                If True, modify the current object in place
+                If False, return a new object with the filtered phases
+
+        Returns:
+            SRPhases: A new SRPhases object containing only the phases that match the criteria
+        '''
+        if (prob_range is None) and (phase_type is None):
+            if inplace:
+                return self
+            else:
+                return self.copy()  # Return a simple copy if no filtering needed
+
+        # check and process input parameters
+        _, _, phase_type, prob_range = _check_process_input1(phase_type=phase_type, prob_range=prob_range)   
+
+        # When modifying in place, we don't need to copy each phase first
+        if inplace:
+            filtered_phases = [
+                iphase for iphase in self.phases.values()
+                if ((phase_type is None) or (iphase.type in phase_type)) and
+                ((prob_range is None) or ((iphase.prob is not None) and (prob_range[0] <= iphase.prob <= prob_range[1])))
+            ]
+            self.phases = {phase.type: phase for phase in filtered_phases}
+            return self
+        else:
+            # Only copy when creating a new object
+            filtered_phases = [
+                iphase.copy() for iphase in self.phases.values()
+                if ((phase_type is None) or (iphase.type in phase_type)) and
+                ((prob_range is None) or ((iphase.prob is not None) and (prob_range[0] <= iphase.prob <= prob_range[1])))
+            ]
+            return SRPhases(phases=filtered_phases, source_id=self.source_id, receiver_id=self.receiver_id)
 
     def validate_phases(self):
         '''
@@ -490,23 +590,113 @@ class SRPhases(object):
 
 
 
-class StationPicks(object):
+class Picks(object):
     '''
-    StationPick object: phase picks for a station.
+    A collection of phase picks. 
+    The picks may come from different sources and different receivers.
     '''
-    def __init__(self, station_network, station_name, station_location, 
-                 station_instrument, station_component, phases):
+    def __init__(self, SRPhase_list=[]):
         '''
-        station_network: str: network code of the station, e.g. 'CI', 'BK'
-        station_name: str: name of the station, e.g. 'PAS', 'PFO'
-        station_location: str: location code of the station, e.g. '00', '10', ''
-        station_instrument: str: instrument code of the station, e.g. 'BH', 'HH', 'SH'
-        station_component: str: component code of the station, e.g. 'ZNE', '123', 'Z12'
-        phases: list of Phase: list of picked phases
+        SRPhase_list: a list of SRPhase_list objects or a single SRPhase_list object
         '''
-        self.station_id = f'{station_network}.{station_name}.{station_location}.{station_instrument}.{station_component}'
-        self.phase = phases
+        # Validate input and initialize the list of SRPhases objects
+        if isinstance(SRPhase_list, (list, tuple)):
+            for iphase in SRPhase_list:
+                if not isinstance(iphase, SRPhases):
+                    raise TypeError("SRPhase_list must contain SRPhases objects")
+            self.picks = SRPhase_list
+        elif isinstance(SRPhase_list, SRPhases):
+            self.picks = [SRPhase_list]
+        else:
+            raise TypeError("SRPhase_list must be a list or tuple of SRPhases objects or a single SRPhases object")
+        
+    def add_picks(self, SRPhase_list):
+        '''
+        Add a list/single of SRPhases object to the collection.
+        
+        Parameters:
+            SRPhase_list: list of SRPhases objects
+        '''
+        if isinstance(SRPhase_list, (list, tuple)):
+            self.picks.extend(SRPhase_list)
+        elif isinstance(SRPhase_list, SRPhases):
+            self.picks.append(SRPhase_list)
+        else:
+            raise TypeError("SRPhase_list must be a list or tuple of SRPhases objects or a single SRPhases object")
+
+    def get_picks(self, source_id=None, receiver_id=None, phase_type=None, prob_range=None):
+        '''
+        Filtered picks by source_id, receiver_id, phase_type, and probability range.
+        
+        Parameters:
+            source_id: str or a list/tuple of str or None
+                Source ID to filter by
+            receiver_id: str or a list/tuple of str or None
+                Receiver ID to filter by
+            phase_type: str or a list/tuple of str or None
+                Phase type to filter by
+            prob_range: float or a list/tuple of floats or None
+                Probability range or minimum probability threshold to filter by
+        
+        Returns:
+            Returing a new Picks object with the filtered list of SRPhases objects
+            without modifying the original.
+        '''
+        # Short-circuit if no filtering needed
+        if (source_id is None) and (receiver_id is None) and (phase_type is None) and (prob_range is None):
+            return Picks(SRPhase_list=self.picks.copy())
+        
+        # check and process input parameters
+        source_id, receiver_id, phase_type, prob_range = _check_process_input1(source_id=source_id, 
+                                                                               receiver_id=receiver_id, 
+                                                                               phase_type=phase_type,
+                                                                               prob_range=prob_range)
+
+        filtered_picks = []
+        for ipick in self.picks:
+            # Check source_id and receiver_id first (faster checks)
+            if (source_id is not None) and (ipick.source_id not in source_id):
+                continue
+            if (receiver_id is not None) and (ipick.receiver_id not in receiver_id):
+                continue
+            
+            # If phase_type filtering is requested, check for matching phases
+            if (phase_type is None) and (prob_range is None):
+                filtered_picks.append(ipick.copy())  # Just copy the original
+            else:
+                # Get all phases of the specified types with probability in range
+                matching_pick = ipick.filter_phases(phase_type=phase_type, prob_range=prob_range, inplace=False)
+                if matching_pick.count_phases() > 0:  # Only add if it has phases
+                    filtered_picks.append(matching_pick)
+        
+        # filtered_picks = [
+        #     pick for pick in [
+        #         ipick.filter_phases(phase_type=phase_type, prob_range=prob_range) 
+        #         for ipick in self.picks
+        #         if ((source_id is None) or (ipick.source_id in source_id)) and
+        #         ((receiver_id is None) or (ipick.receiver_id in receiver_id))
+        #     ] if pick.count_phases() > 0
+        # ]
+
+        return Picks(SRPhase_list=filtered_picks)
+
+    def remove_picks(self, source_id=None, receiver_id=None):
+        '''
+        Remove phase picks filtered by source and/or receiver ID.
+        Inputs:
+            source_id: str or a list/tuple of str or None: source ID to filter by
+            receiver_id: str or a list/tuple of str or None: receiver ID to filter by
+
+        Returns:
+            None
+        '''
+        if (source_id is None) and (receiver_id is None):
+            # no removal needed
+            return
+        
+
+        # remove picks
+        self.picks = [ipick for ipick in self.picks if (source_id is None or ipick.source_id not in source_id) and (receiver_id is None or ipick.receiver_id not in receiver_id)]
+        return
 
     
-
-
