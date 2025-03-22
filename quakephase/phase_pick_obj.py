@@ -4,6 +4,7 @@
 from obspy import UTCDateTime
 from datetime import datetime
 import numpy as np
+import pandas as pd
 
 
 def _convert_to_utcdatetime(time_value):
@@ -63,7 +64,7 @@ def _check_process_input1(source_id=None, receiver_id=None, phase_type=None, pro
 
 class Phase(object):
     '''
-    Phase object for a paricular seismic phase of a seismic source/event.
+    Phase object for a paricular seismic phase.
     '''
     def __init__(self, phase_type, time, prob=None, uncert_lower=None, uncert_upper=None):
         '''
@@ -256,7 +257,7 @@ class SRPhases(object):
     i.e. a dict (phase type index) of Phase objects from the same source at a particular receiver.
     Each phase type (P, S, etc.) can only appear once in the collection, case sensitive.
     '''
-    def __init__(self, phases=None, source_id=None, receiver_id=None):
+    def __init__(self, phases, source_id=None, receiver_id=None):
         '''
         Inputs:
             phases: a list of Phase objects or None
@@ -267,25 +268,29 @@ class SRPhases(object):
             ValueError: If multiple phases of the same type are provided.
             TypeError: If a non-Phase object is provided.
         '''
-        self.phases = {}  # dict of phase type: Phase object
+        self.phases = {}  # dict of phase type: Phase object, case sensitive
         self.source_id = source_id
         self.receiver_id = receiver_id
 
         # Check for duplicate phase types during initialization
-        if phases:
-            if not isinstance(phases, (list, tuple)):
-                raise TypeError("phases must be a list or tuple of Phase objects")
+        if isinstance(phases, Phase):
+            phases = set(phases)
+        if not isinstance(phases, (list, tuple)):
+            raise TypeError("phases must be a list or tuple of Phase objects")
 
-            phase_type_all = set()
-            for iphase in phases:
-                if not isinstance(iphase, Phase):
-                    raise TypeError(f"Expected Phase object, got {type(iphase)}")
-                
-                if iphase.type in phase_type_all:
-                    raise ValueError(f"Duplicate phase type '{iphase.type}' found. SRPhases can only contain one phase of each type.")
-                
-                phase_type_all.add(iphase.type)
-                self.phases[iphase.type] = iphase
+        phase_type_all = set()
+        for iphase in phases:
+            if not isinstance(iphase, Phase):
+                raise TypeError(f"Expected Phase object, got {type(iphase)}")
+            
+            if iphase.type in phase_type_all:
+                raise ValueError(f"Duplicate phase type '{iphase.type}' found. SRPhases can only contain one phase of each type.")
+            
+            phase_type_all.add(iphase.type)
+            self.phases[iphase.type] = iphase
+
+        # sort all phases by time (in ascending order) during initialization
+        self.sort_phases(sort_by="time", reverse=False)
 
     def add_phase(self, phase):
         '''
@@ -316,16 +321,24 @@ class SRPhases(object):
         '''
         Remove phases from the collection based on type and/or minimum probability.
         Phases of specified types and with probability less than the minimum probability are removed.
-        
+        If None is provided for either parameter, that filter is ignored (not checked for removal).
+
         Parameters:
         phase_type: str or a list/tuple of str or None
             Type(s) of phases to remove
         min_prob: float or None
             Minimum probability threshold. Phases with probability below this are removed.
+        require_both: bool, optional
+            If True, both phase type and probability must match for a phase to be removed.
+            If False, either phase type or probability can match for a phase to be removed.
 
         Returns:
             Directly modifies the object, no return value
         '''
+        # Short-circuit if no filtering/removal needed
+        if (phase_type is None) and (min_prob is None):
+            return
+
         # check and process input parameters
         _, _, phase_type, _ = _check_process_input1(phase_type=phase_type)
         if (min_prob is not None) and not isinstance(min_prob, (float, int)):
@@ -592,7 +605,7 @@ class SRPhases(object):
 
 class Picks(object):
     '''
-    A collection of phase picks. 
+    A collection of phase picks, i.e. SRPhases objects.
     The picks may come from different sources and different receivers.
     '''
     def __init__(self, SRPhase_list=[]):
@@ -627,16 +640,18 @@ class Picks(object):
     def get_picks(self, source_id=None, receiver_id=None, phase_type=None, prob_range=None):
         '''
         Filtered picks by source_id, receiver_id, phase_type, and probability range.
+        Select picks that match the specified criteria.
         
         Parameters:
             source_id: str or a list/tuple of str or None
-                Source ID to filter by
+                Source ID to filter by, matched picks will be returned
             receiver_id: str or a list/tuple of str or None
-                Receiver ID to filter by
+                Receiver ID to filter by, matched picks will be returned
             phase_type: str or a list/tuple of str or None
-                Phase type to filter by
+                Phase type to filter by, matched picks will be returned
             prob_range: float or a list/tuple of floats or None
-                Probability range or minimum probability threshold to filter by
+                Probability range or minimum probability threshold (>=) to filter by, 
+                matched picks will be returned
         
         Returns:
             Returing a new Picks object with the filtered list of SRPhases objects
@@ -680,23 +695,212 @@ class Picks(object):
 
         return Picks(SRPhase_list=filtered_picks)
 
-    def remove_picks(self, source_id=None, receiver_id=None):
+    def remove_picks(self, source_id=None, receiver_id=None, phase_type=None, min_prob=None):
         '''
-        Remove phase picks filtered by source and/or receiver ID.
-        Inputs:
-            source_id: str or a list/tuple of str or None: source ID to filter by
-            receiver_id: str or a list/tuple of str or None: receiver ID to filter by
+        Remove phase picks filtered by source_id, receiver_id, phase_type, and probability threshold.
+        Once criterias are specified, they must be met simultaneously for a pick to be removed.
+        If a criteria is None, it is ignored (not checked for removal).
+        Parameters:
+            source_id: str or a list/tuple of str or None
+                Source ID to filter by, matched picks will be removed
+            receiver_id: str or a list/tuple of str or None
+                Receiver ID to filter by, matched picks will be removed
+            phase_type: str or a list/tuple of str or None
+                Phase type to filter by, matched picks will be removed
+            min_prob: float or None
+                Minimum probability threshold. Picks with probability below this are removed.
 
         Returns:
-            None
+            Directly modifies the Picks object, no return value
         '''
-        if (source_id is None) and (receiver_id is None):
-            # no removal needed
+        # Short-circuit if no filtering needed
+        if (source_id is None) and (receiver_id is None) and (phase_type is None) and (min_prob is None):
             return
-        
 
-        # remove picks
-        self.picks = [ipick for ipick in self.picks if (source_id is None or ipick.source_id not in source_id) and (receiver_id is None or ipick.receiver_id not in receiver_id)]
+        # check and process input parameters
+        source_id, receiver_id, phase_type, _ = _check_process_input1(source_id=source_id, 
+                                                                      receiver_id=receiver_id, 
+                                                                      phase_type=phase_type, 
+                                                                      prob_range=None)
+        
+        # check and remove picks directly from self.picks
+        picks_to_remove = []  # Mark picks (SRPhase object) for removal
+        for ipick in self.picks:
+            # Check source_id and receiver_id first (faster checks)
+            if (source_id is not None) and (ipick.source_id not in source_id):
+                # do not match source_id, continue to the next pick
+                continue
+            if (receiver_id is not None) and (ipick.receiver_id not in receiver_id):
+                # do not match receiver_id, continue to the next pick
+                continue
+
+            ipick.remove_phase(phase_type=phase_type, min_prob=min_prob, require_both=True)
+
+            # Remove the pick if it has no phases left
+            if ipick.count_phases() == 0:
+                picks_to_remove.append(ipick)
+
+        # Remove the picks marked for removal
+        picks_to_remove_set = set(picks_to_remove)
+        self.picks = [jpick for jpick in self.picks if jpick not in picks_to_remove_set]
+
         return
+
+    def sort_picks(self, sort_by="receiver_id", reverse=False):
+        '''
+        Sort phase picks by time or receiver_id.
+        Will always sort by source_id first, 
+        then according to the specified criterion.
+
+        Note that the SRPhases objects are already sorted by phase times in ascending order.
+        The first phase time in each SRPhases object (earlist phase time) is used for sorting.
+
+        Parameters:
+            sort_by: str, optional, Default is "receiver_id"
+                Criterion to sort by: "time" or "receiver_id"
+                If "time", sort by the earliest phase time in each SRPhases object;
+                If "receiver_id", sort first by the receiver_id of the SRPhases object,
+                    then by the earliest phase time in each SRPhases object.
+                
+            reverse: bool, optional
+                If True, sort in descending order
+                Default is False (ascending order)
+        
+        Returns:
+            Picks: self reference for method chaining
+        '''
+        if sort_by.lower() not in ["time", "receiver_id"]:
+            raise ValueError("sort_by must be either 'time' or 'receiver_id'")
+        
+        # Function to get the earliest phase time from an SRPhases object
+        def get_earliest_time(srpicks):
+            phases = list(srpicks.phases.values())
+            # Return earliest time if phases exist, else use infinity for sorting
+            return phases[0].time if phases else float('inf')
+    
+        # Cache earliest times to avoid redundant calculations during comparisons
+        earliest_times = {id(ipick): get_earliest_time(ipick) for ipick in self.picks}
+
+        # Sort the picks
+        if sort_by.lower() == "time":
+            self.picks.sort(
+                key=lambda pick: (pick.source_id or "", earliest_times[id(pick)]),
+                reverse=reverse
+            )
+        else:  # sort_by == "receiver_id"
+            self.picks.sort(
+                key=lambda pick: (pick.source_id or "", pick.receiver_id or "", earliest_times[id(pick)]),
+                reverse=reverse
+            )
+
+        return self
+
+    def to_dataframe(self):
+        '''
+        Convert the Picks object to a pandas DataFrame.
+        
+        Returns:
+            DataFrame: DataFrame representation of the Picks object
+        '''
+
+        # Estimate total number of phases
+        total_phases = sum(ipick.count_phases() for ipick in self.picks)
+        
+        # Pre-allocate column arrays
+        source_ids = [None] * total_phases
+        receiver_ids = [None] * total_phases
+        phase_types = [None] * total_phases
+        phase_times = [None] * total_phases
+        phase_probs = [None] * total_phases
+        uncert_lowers = [None] * total_phases
+        uncert_uppers = [None] * total_phases
+        
+        # Populate arrays
+        idx = 0
+        for ipick in self.picks:
+            for iphase in ipick.get_phases_list():
+                source_ids[idx] = ipick.source_id
+                receiver_ids[idx] = ipick.receiver_id
+                phase_types[idx] = iphase.type
+                phase_times[idx] = iphase.time
+                phase_probs[idx] = iphase.prob
+                uncert_lowers[idx] = iphase.uncert_lower
+                uncert_uppers[idx] = iphase.uncert_upper
+                idx += 1
+        
+        # Create DataFrame directly from column arrays
+        return pd.DataFrame({
+            'source_id': source_ids,
+            'receiver_id': receiver_ids,
+            'phase_type': phase_types,
+            'time': phase_times,
+            'prob': phase_probs,
+            'uncert_lower': uncert_lowers,
+            'uncert_upper': uncert_uppers
+        })
+
+    @classmethod
+    def from_dataframe(cls, df):
+        '''
+        Create a Picks object from a pandas DataFrame.
+
+        Parameters:
+            df: DataFrame: DataFrame containing phase data with columns:
+            - source_id: Source identifier (optional)
+            - receiver_id: Receiver identifier (required)
+            - phase_type: Type of phase (P, S, etc.) (required)
+            - time: Phase time (required)
+            - prob: (optional) Phase probability
+            - uncert_lower: (optional) Lower uncertainty bound
+            - uncert_upper: (optional) Upper uncertainty bound
+
+        Returns:
+            Picks: New Picks object
+
+        '''
+        # Check for required columns
+        required_columns = ['receiver_id', 'phase_type', 'time']  # at least these columns are required
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required columns: {missing_columns}")
+        
+        # Add source_id column if missing
+        if 'source_id' not in df.columns:
+            df = df.copy()
+            df['source_id'] = None
+
+        # Pre-check which optional columns exist
+        has_prob = 'prob' in df.columns
+        has_uncert_lower = 'uncert_lower' in df.columns
+        has_uncert_upper = 'uncert_upper' in df.columns
+        
+        # Group phases by source_id and receiver_id
+        srphases_list = []
+        
+        # Process each group efficiently
+        for (src_id, rcv_id), group in df.groupby(['source_id', 'receiver_id']):
+            # Convert group to dictionary of arrays for faster access
+            data = {col: group[col].values for col in group.columns}
+            
+            # Create phases more efficiently
+            phases = []
+            for i in range(len(group)):
+                phases.append(Phase(
+                    phase_type=data['phase_type'][i],
+                    time=data['time'][i],
+                    prob=data['prob'][i] if has_prob else None,
+                    uncert_lower=data['uncert_lower'][i] if has_uncert_lower else None,
+                    uncert_upper=data['uncert_upper'][i] if has_uncert_upper else None
+                ))
+            
+            # Create SRPhases object
+            srphases_list.append(SRPhases(
+                phases=phases,
+                source_id=src_id,
+                receiver_id=rcv_id
+            ))
+        
+        return cls(SRPhase_list=srphases_list)
+    
 
     
