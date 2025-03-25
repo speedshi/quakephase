@@ -17,7 +17,7 @@ pip install quakephase
 
 Install from source code
 ```bash
-conda create -n quakephase python=3.9
+conda create -n quakephase python=3.11
 conda activate quakephase
 git clone https://github.com/speedshi/quakephase.git
 cd quakephase

@@ -1,0 +1,33 @@
+
+
+[build-system]
+# Specifies the build system requirements and backend
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "quakephase"
+version = "0.2.5"
+description = "A Python package for automatic seismic phase characterization"
+requires-python = ">=3.10"
+dependencies = [  # List of package dependencies
+    "seisbench>=0.8.2",
+    "pyyaml>=6.0.2",
+    "scikit-learn>=1.6.1",
+]
+readme = "README.md"
+authors = [
+    {name = "Peidong Shi", email = "speedshi@hotmail.com"},
+    ]
+keywords = ["Seismology", "Machine Learning", "Phase Picking", "Seismic Monitoring", "Earthquake Monitoring"]
+license = {file = "LICENSE"}
+
+
+[project.urls]
+Homepage = "https://github.com/speedshi/quakephase"
+
+
+[tool.setuptools]
+packages = ["quakephase"]  # Explicitly specify package directory
+
